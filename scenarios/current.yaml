@@ -137,6 +137,7 @@ appointment_types:
 # staff.named = specific people; staff.count = any N people of that role.
 sessions:
   - id: liat_clinic_sun
+    focus: [aesthetics, consults]                  # ASSUMED
     lead: liat
     weeks: weekly
     day: sun
@@ -148,6 +149,7 @@ sessions:
     covers_tasks: [suture_removal]               # done by Liat's nurse, not a separate job (yet)
 
   - id: liat_clinic_wed
+    focus: [aesthetics, consults]                  # ASSUMED
     lead: liat
     weeks: weekly
     day: wed
@@ -159,6 +161,7 @@ sessions:
     covers_tasks: [suture_removal]
 
   - id: liat_surgery_thu
+    focus: [surgery]                  # ASSUMED
     lead: liat
     weeks: weekly
     day: thu
@@ -168,6 +171,7 @@ sessions:
     staff: {count: {nurse: 2}}
 
   - id: beatrice_mon
+    focus: [aesthetics, consults]                  # ASSUMED
     lead: beatrice
     weeks: A
     day: mon
@@ -178,6 +182,7 @@ sessions:
     needs_access: [drug_fridge]
 
   - id: beatrice_wed
+    focus: [aesthetics, consults]                  # ASSUMED
     lead: beatrice
     weeks: B
     day: wed                                     # overlaps Liat's clinic day on purpose
@@ -188,6 +193,7 @@ sessions:
     needs_access: [drug_fridge]
 
   - id: roni_sun
+    focus: [aesthetics, consults]                  # ASSUMED
     lead: roni
     weeks: weekly
     day: sun
@@ -198,6 +204,7 @@ sessions:
     needs_access: [drug_fridge]                  # staff walk into room 5 for drugs
 
   - id: moran_tue
+    focus: [consults]                  # ASSUMED
     lead: moran
     weeks: weekly
     day: tue
@@ -207,6 +214,7 @@ sessions:
     staff: {}
 
   - id: device_treatments_tue
+    focus: [devices]                  # ASSUMED
     lead: null
     weeks: weekly
     day: tue
@@ -217,6 +225,7 @@ sessions:
     staff: {count: {nurse: 1}}                   # ASSUMED one nurse
 
   - id: device_consults_tue
+    focus: [consults, devices]                  # ASSUMED
     lead: null
     weeks: weekly
     day: tue
@@ -224,6 +233,14 @@ sessions:
     end: "18:00"
     rooms: {primary: [r6]}
     staff: {count: {nurse: 1}}                   # ASSUMED one nurse
+
+# ------------------------------------------------------------ focus targets
+# Desired weekly session hours per focus. Soft goals: report shows the gap.
+focus_targets:
+  surgery: null                                  # TODO
+  aesthetics: null                               # TODO
+  consults: null                                 # TODO
+  devices: null                                  # TODO: goal is to expand
 
 # -------------------------------------------------------------------- tasks
 # Work that must be covered but is not (yet) its own session.
