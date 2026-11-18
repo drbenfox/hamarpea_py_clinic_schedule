@@ -45,7 +45,7 @@ main { flex: 1; display: flex; min-height: 0; }
 .rl { padding: 8px; font-size: 13px; }
 .rl small { display: block; color: var(--muted); font-size: 11px; }
 .loc { grid-column: 1 / -1; padding: 4px 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); background: var(--bg); }
-.cell { position: relative; height: 40px; }
+.cell { position: relative; min-height: 40px; }
 .blk { position: absolute; top: 3px; bottom: 3px; border-radius: 4px; color: #fff; font-size: 11px; line-height: 1.2; padding: 2px 4px; overflow: hidden; cursor: pointer; border: 2px solid transparent; white-space: nowrap; text-overflow: ellipsis; }
 .blk b { display: block; overflow: hidden; text-overflow: ellipsis; }
 .blk.overflow { background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.25) 0 4px, transparent 4px 8px); }
@@ -225,7 +225,7 @@ const inWk = (s, wk) => s.weeks === "weekly" || s.weeks === wk;
 
 function buildGrid(wk, interactive) {
   const { days, open, close } = S.calendar;
-  const starts = S.nursing.weeks.flatMap((w) => w.days.flatMap((d) => d.segments.map((x) => mins(x.start))));
+  const starts = (S.nursing ? S.nursing.weeks : []).flatMap((w) => w.days.flatMap((d) => d.segments.map((x) => mins(x.start))));
   const o = Math.floor(Math.min(mins(open), ...starts) / 60) * 60, span = mins(close) - o;
   const ticks = [];
   for (let h = Math.ceil(o / 120) * 2; h * 60 <= mins(close); h += 2) ticks.push(h);
@@ -241,7 +241,7 @@ function buildGrid(wk, interactive) {
     const used = S.sessions.some((s) => s.rooms.primary.concat(s.rooms.overflow).includes(room.id));
     if (room.location !== "main" && !showSecond && !used) continue;
     if (room.location !== lastLoc) { g.append(el("div", { class: "loc" }, room.location === "main" ? "Main clinic" : `Location: ${room.location}`)); lastLoc = room.location; }
-    g.append(el("div", { class: "rl" }, room.id, el("small", {}, room.attributes.join(", "))));
+    g.append(el("div", { class: "rl", title: room.attributes.join(", ") }, room.id));
     for (const d of days) {
       const cell = el("div", { class: "cell" });
       vlines(cell);
@@ -259,7 +259,7 @@ function buildGrid(wk, interactive) {
       g.append(cell);
     }
   }
-  nurseRow(g, wk, interactive, o, span, vlines);
+  if (S.nursing) nurseRow(g, wk, interactive, o, span, vlines);
   return g;
 }
 
