@@ -65,6 +65,7 @@ class SessionRooms(_Base):
     primary: list[str] = []
     preferred: list[str] = []
     overflow: list[str] = []
+    count: int | None = None  # rooms wanted when primary is left open
 
 
 class SessionStaff(_Base):
@@ -84,6 +85,9 @@ class Session(_Base):
     staff: SessionStaff = Field(default_factory=SessionStaff)
     devices: list[str] | None = None
     needs_access: list[str] | None = None
+    duration: int | None = None  # minutes, needed when start/end are left open
+    allowed_days: list[str] | None = None
+    allowed_rooms: list[str] | None = None
     focus: list[str] = []
     covers_tasks: list[str] = []
     locked: dict[str, bool] = {}

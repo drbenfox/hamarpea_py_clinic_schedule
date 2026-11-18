@@ -7,8 +7,19 @@ Plans how rooms, staff and devices are used across a two-week (A/B) clinic cycle
 ```
 uv sync
 uv run planner check scenarios/current.yaml   # exit 1 if a hard rule is broken
+uv run planner solve scenarios/current.yaml [--json out/solved.json] [--time 30]
+uv run planner report scenarios/current.yaml  # room grid, people, idle time, utilisation
 uv run pytest
 ```
+
+## Solve
+
+A session field is fixed when it has a value, and open when it is null or unlocked. Unlock with `locked: {day: false}`, `{time: false}` or `{rooms: false}`.
+
+- Open time needs `duration` (minutes). Open rooms need `rooms.count`.
+- Narrow the search with `allowed_days` and `allowed_rooms`.
+- The solver minimises weighted soft penalties plus a small term for peak nurse headcount per day.
+- When nothing fits, it prints a minimal set of rules and sessions that conflict. Relax or unlock any one of them.
 
 `check` lists hard violations, warnings (unplaced sessions and every `TODO`/`UNCONFIRMED` comment), soft penalties with weights, and info (nurse demand per day, `ASSUMED` notes).
 

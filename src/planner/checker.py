@@ -33,7 +33,7 @@ class Report:
         return "\n".join(lines)
 
 
-def _implicit_specs(sc: Scenario) -> list[RuleSpec]:
+def implicit_specs(sc: Scenario) -> list[RuleSpec]:
     """Per-session `rooms.preferred` becomes a soft prefer_room rule."""
     return [
         RuleSpec(id=f"{s.id}_preferred", type="prefer_room", strength="soft", weight=10, session=s.id, rooms=s.rooms.preferred)
@@ -47,7 +47,7 @@ def check(scenario: Scenario) -> Report:
     for s, missing in plan.unplaced:
         out.append(Violation("warning", "unplaced", f"{s.id} is not fully placed (missing {missing}); skipped by the checks."))
     rules = [cls() for cls in REGISTRY.values() if issubclass(cls, Builtin)]
-    for spec in scenario.rules + _implicit_specs(scenario):
+    for spec in scenario.rules + implicit_specs(scenario):
         if spec.type not in REGISTRY:
             out.append(Violation("warning", spec.id, f"Rule {spec.id} has unknown type '{spec.type}'; ignored."))
             continue
