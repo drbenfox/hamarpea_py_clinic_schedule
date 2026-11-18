@@ -1,0 +1,25 @@
+[project]
+name = "planner"
+version = "0.1.0"
+description = "Clinic room and staff planner"
+readme = "README.md"
+authors = [
+    { name = "Ben", email = "drbenfox@hamarpea.com" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.14.3",
+    "pyyaml>=6.0.3",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.9,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[project.scripts]
+planner = "planner.cli:main"

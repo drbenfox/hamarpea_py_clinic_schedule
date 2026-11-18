@@ -167,6 +167,7 @@ sessions:
     day: thu
     start: "08:00"
     end: "17:00"
+    room_needs: [surgery_capable]                # every primary room
     rooms: {primary: [r4, r5, r6]}               # needs 3 surgery-capable rooms
     staff: {count: {nurse: 2}}
 
@@ -260,7 +261,9 @@ rules:
   - id: fridge_access
     type: shared_access
     attribute: drug_fridge
-    strength: hard            # becomes soft if options.curtain_room5 is true
+    strength: hard
+    relaxed_by: curtain_room5 # becomes soft (weight below) when this option is true
+    relaxed_weight: 50
     notes: >
       While a session that needs the fridge runs, a fridge room must be one of
       its own rooms or be empty. This is why devices do not run while Roni works.
@@ -278,6 +281,12 @@ rules:
   #   people: [doctor_id, nurse_id]
   #   strength: soft
   #   weight: 50
+
+  - id: avoid_reception
+    type: prefer_room
+    avoid: [reception]
+    strength: soft
+    weight: 100
 
   - id: prefer_main_site
     type: prefer_location
