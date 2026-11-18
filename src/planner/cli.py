@@ -5,18 +5,25 @@ from pathlib import Path
 
 from .checker import check
 from .loader import load_scenario
+from .paths import DEFAULT_SCENARIO, ROOT
 from .report import report
 from .solve import solve
 from .whatif import load_patch, run_whatif
+
+
+def _find(name: str, folder: str) -> Path:
+    """A path as typed, else the same name inside the project's folder."""
+    p = Path(name)
+    return p if p.exists() else ROOT / folder / p.name
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="planner")
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("check", help="list every rule a fully placed plan breaks")
-    p.add_argument("scenario", help="path to a scenario YAML file")
+    p.add_argument("scenario", nargs="?", default=str(DEFAULT_SCENARIO), help="scenario YAML (default: the project's scenarios/current.yaml)")
     p = sub.add_parser("solve", help="place open sessions, or explain why that is impossible")
-    p.add_argument("scenario")
+    p.add_argument("scenario", nargs="?", default=str(DEFAULT_SCENARIO), help="scenario YAML (default: the project's scenarios/current.yaml)")
     p.add_argument("--json", help="write the solved plan to this JSON file")
     p.add_argument("--time", type=float, default=30.0, help="solver time limit in seconds")
     p = sub.add_parser("whatif", help="apply patch file(s) to a scenario and show what changes")
@@ -24,11 +31,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("patches", nargs="+", help="patch YAML files, applied in order")
     p.add_argument("--time", type=float, default=30.0)
     p = sub.add_parser("serve", help="local web UI")
-    p.add_argument("scenario")
+    p.add_argument("scenario", nargs="?", default=str(DEFAULT_SCENARIO), help="scenario YAML (default: the project's scenarios/current.yaml)")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8000)
     p = sub.add_parser("report", help="room grid, people, idle time and utilisation")
-    p.add_argument("scenario")
+    p.add_argument("scenario", nargs="?", default=str(DEFAULT_SCENARIO), help="scenario YAML (default: the project's scenarios/current.yaml)")
     args = parser.parse_args(argv)
 
     if args.command == "check":
@@ -36,8 +43,8 @@ def main(argv: list[str] | None = None) -> int:
         print(result.text())
         return 1 if result.errors else 0
     if args.command == "whatif":
-        text = Path(args.scenario).read_text()
-        output, ok = run_whatif(text, [load_patch(x) for x in args.patches], args.time)
+        text = _find(args.scenario, "scenarios").read_text()
+        output, ok = run_whatif(text, [load_patch(_find(x, "patches")) for x in args.patches], args.time)
         print(output)
         return 0 if ok else 1
     if args.command == "serve":

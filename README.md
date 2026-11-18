@@ -10,7 +10,7 @@ uv run planner check scenarios/current.yaml   # exit 1 if a hard rule is broken
 uv run planner solve scenarios/current.yaml [--json out/solved.json] [--time 30]
 uv run planner report scenarios/current.yaml  # room grid, people, idle time, utilisation
 uv run planner whatif scenarios/current.yaml patches/01_roni_extra_day.yaml [more patches...]
-uv run planner serve scenarios/current.yaml   # web UI at http://127.0.0.1:8000
+uv run planner serve                         # web UI at http://127.0.0.1:8000
 uv run pytest
 ```
 

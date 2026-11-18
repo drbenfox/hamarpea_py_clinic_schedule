@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from .checker import check
 from .loader import load_text
 from .models import Session
+from .paths import OUT
 from .solve import solve
 
 STATIC = Path(__file__).parent / "static"
@@ -147,7 +148,7 @@ def create_app(path: str | Path) -> FastAPI:
     @app.get("/api/export")
     def export() -> FileResponse:
         with ws.mutex:
-            out = Path("out") / "plan.json"
+            out = OUT / "plan.json"
             out.parent.mkdir(exist_ok=True)
             out.write_text(json.dumps(ws.export(), indent=2))
         return FileResponse(out, media_type="application/json", filename="plan.json")
