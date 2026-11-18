@@ -10,6 +10,7 @@ uv run planner check scenarios/current.yaml   # exit 1 if a hard rule is broken
 uv run planner solve scenarios/current.yaml [--json out/solved.json] [--time 30]
 uv run planner report scenarios/current.yaml  # room grid, people, idle time, utilisation
 uv run planner whatif scenarios/current.yaml patches/01_roni_extra_day.yaml [more patches...]
+uv run planner serve scenarios/current.yaml   # web UI at http://127.0.0.1:8000
 uv run pytest
 ```
 
@@ -23,6 +24,12 @@ A session field is fixed when it has a value, and open when it is null or unlock
 - When nothing fits, it prints a minimal set of rules and sessions that conflict. Relax or unlock any one of them.
 
 `check` lists hard violations, warnings (unplaced sessions and every `TODO`/`UNCONFIRMED` comment), soft penalties with weights, and info (nurse demand per day, `ASSUMED` notes).
+
+## Web UI
+
+One page: rooms by days with a Week A/B toggle, blocks coloured by lead, a room-timeline inside each cell (08-18). Click a session for details and its Day / Time / Rooms locks. Unlocked fields can be moved by Solve; moved sessions get an orange dashed outline and sessions in hard violations a red one. The side panel lists hard violations, soft penalties, open questions and info; click one to select its session.
+
+Buttons: Check (re-run rules), Solve, Reset (reload the YAML). Edits live in memory only, so the page shows "edited, not saved". Export JSON downloads the current plan. People, rooms and rules are edited in the YAML.
 
 ## What-if patches
 

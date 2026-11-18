@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clinic planner</title>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --ink: #1c2330; --muted: #5b6470; --line: #d9dde3;
+  --err: #b3261e; --warn: #8a5a00; --soft: #1f5fa8; --info: #5b6470; --ok: #0b7a5a;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #14171c; --panel: #1d2128; --ink: #e8ebf0; --muted: #9aa3b0; --line: #343a44;
+          --err: #ff8a80; --warn: #e0b04a; --soft: #7db4f0; --info: #9aa3b0; --ok: #5fd0a8; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.4 system-ui, sans-serif; background: var(--bg); color: var(--ink); height: 100vh; display: flex; flex-direction: column; }
+header { display: flex; align-items: center; gap: 12px; padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+header h1 { font-size: 16px; margin: 0 8px 0 0; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; border-right: 1px solid var(--line); border-radius: 0; }
+.seg button:last-child { border-right: 0; }
+.seg button.on { background: var(--ink); color: var(--bg); }
+button, select { font: inherit; padding: 5px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); cursor: pointer; }
+button.primary { background: var(--soft); border-color: var(--soft); color: #fff; }
+@media (prefers-color-scheme: dark) { button.primary { color: #0b1220; } }
+button:disabled { opacity: .5; cursor: default; }
+.spacer { flex: 1; }
+#status { color: var(--muted); font-size: 13px; }
+#edited { color: var(--warn); font-weight: 600; }
+main { flex: 1; display: flex; min-height: 0; }
+#left { flex: 1; overflow: auto; padding: 12px 14px; }
+#side { width: 380px; border-left: 1px solid var(--line); background: var(--panel); overflow: auto; padding: 12px 14px; }
+#banner { margin-bottom: 10px; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); position: relative; }
+#banner.infeasible { border-color: var(--err); }
+#banner.solved { border-color: var(--ok); }
+#banner ul { margin: 6px 0 0; padding-left: 18px; }
+#banner .x { position: absolute; top: 4px; right: 6px; border: 0; background: none; padding: 0 6px; font-size: 16px; }
+#unplaced { margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.grid { display: grid; grid-template-columns: 96px repeat(5, minmax(120px, 1fr)); gap: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); min-width: 760px; }
+.grid > div { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); }
+.hd { padding: 6px 8px; font-weight: 600; background: var(--bg); position: sticky; top: 0; z-index: 3; }
+.axis { display: flex; justify-content: space-between; font-weight: 400; font-size: 10px; color: var(--muted); }
+.rl { padding: 8px; font-size: 13px; }
+.rl small { display: block; color: var(--muted); font-size: 11px; }
+.loc { grid-column: 1 / -1; padding: 4px 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); background: var(--bg); }
+.cell { position: relative; height: 40px; background-image: linear-gradient(to right, var(--line) 1px, transparent 1px); background-size: 20% 100%; }
+.blk { position: absolute; top: 3px; bottom: 3px; border-radius: 4px; color: #fff; font-size: 11px; line-height: 1.2; padding: 2px 4px; overflow: hidden; cursor: pointer; border: 2px solid transparent; white-space: nowrap; text-overflow: ellipsis; }
+.blk b { display: block; overflow: hidden; text-overflow: ellipsis; }
+.blk.overflow { background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.25) 0 4px, transparent 4px 8px); }
+.blk.pin { background: var(--muted); cursor: default; background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.2) 0 4px, transparent 4px 8px); }
+.blk.sel { border-color: var(--ink); outline: 2px solid var(--bg); }
+.blk.moved { border-color: #f0a000; border-style: dashed; }
+.blk.bad { border-color: var(--err); box-shadow: 0 0 0 2px var(--err); }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 4px; vertical-align: -2px; }
+h2 { font-size: 13px; margin: 14px 0 6px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+h2:first-child { margin-top: 0; }
+dl { display: grid; grid-template-columns: 92px 1fr; gap: 3px 8px; margin: 0; }
+dt { color: var(--muted); }
+dd { margin: 0; word-break: break-word; }
+.lock { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+.lock.off { color: var(--muted); }
+.viol { margin: 0; padding: 0; list-style: none; }
+.viol li { padding: 6px 8px; margin-bottom: 4px; border-left: 3px solid var(--line); background: var(--bg); border-radius: 0 4px 4px 0; font-size: 13px; }
+.viol li.click { cursor: pointer; }
+.viol .error { border-color: var(--err); } .viol .warning { border-color: var(--warn); }
+.viol .soft { border-color: var(--soft); } .viol .info { border-color: var(--info); }
+.tag { font-size: 11px; font-weight: 600; margin-right: 6px; }
+details summary { cursor: pointer; font-weight: 600; margin: 8px 0 4px; }
+.muted { color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Clinic planner</h1>
+  <div class="seg" role="group" aria-label="Week"><button id="wA" data-w="A">Week A</button><button id="wB" data-w="B">Week B</button></div>
+  <button id="check">Check</button>
+  <button id="solve" class="primary">Solve</button>
+  <button id="reset">Reset</button>
+  <select id="bulk" aria-label="All sessions"><option value="">All sessions…</option><option value="lock">Lock all</option><option value="unlock">Unlock all</option></select>
+  <label><input type="checkbox" id="second"> second site</label>
+  <span class="spacer"></span>
+  <span id="edited" hidden>edited, not saved</span>
+  <span id="status"></span>
+  <a href="/api/export" download="plan.json">Export JSON</a>
+</header>
+<main>
+  <div id="left">
+    <div id="banner" hidden></div>
+    <div id="unplaced"></div>
+    <div id="grid" class="grid"></div>
+    <div id="legend" class="legend"></div>
+  </div>
+  <aside id="side">
+    <h2>Session</h2>
+    <div id="detail" class="muted">Click a session in the grid.</div>
+    <h2>Rules</h2>
+    <div id="viol"></div>
+  </aside>
+</main>
+<script>
+"use strict";
+const PALETTE = ["#1f5fa8", "#b8470b", "#0b7a5a", "#7a4a9e", "#00798c", "#8a5a00"];
+const NO_LEAD = "#5b6470";
+let S = null, week = "A", selected = null, busy = false;
+
+const $ = (id) => document.getElementById(id);
+function el(tag, props = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === "class") e.className = v; else if (k === "style") Object.assign(e.style, v);
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v);
+  }
+  for (const kid of kids) if (kid != null) e.append(kid);
+  return e;
+}
+const mins = (t) => { const [h, m] = t.split(":"); return +h * 60 + +m; };
+const short = (t) => { const [h, m] = t.split(":"); return m === "00" ? String(+h) : `${+h}:${m}`; };
+
+async function api(path, method = "POST", body) {
+  setBusy(true);
+  try {
+    const r = await fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+    if (!r.ok) throw new Error(`${path}: ${r.status}`);
+    S = await r.json();
+    setBusy(false);
+    render();
+  } catch (e) {
+    $("status").textContent = String(e.message || e);
+  } finally { setBusy(false); }
+}
+function setBusy(b) {
+  busy = b;
+  for (const id of ["check", "solve", "reset", "bulk"]) $(id).disabled = b;
+  if (b) $("status").textContent = "working…";
+}
+
+function colourFor(lead) {
+  if (!lead) return NO_LEAD;
+  const leads = [...new Set(S.sessions.map((s) => s.lead).filter(Boolean))];
+  return PALETTE[leads.indexOf(lead) % PALETTE.length];
+}
+const inWeek = (s) => s.weeks === "weekly" || s.weeks === week;
+const badIds = () => new Set(S.violations.filter((v) => v.severity === "error").flatMap((v) => v.sessions));
+
+function render() {
+  $("wA").classList.toggle("on", week === "A");
+  $("wB").classList.toggle("on", week === "B");
+  $("edited").hidden = !S.edited;
+  const errs = S.violations.filter((v) => v.severity === "error").length;
+  $("status").textContent = errs ? `${errs} hard violation${errs > 1 ? "s" : ""}` : "no hard violations";
+  renderBanner(); renderUnplaced(); renderGrid(); renderLegend(); renderDetail(); renderViolations();
+}
+
+function renderBanner() {
+  const b = $("banner"), n = S.notice;
+  b.hidden = !n; b.className = n ? n.kind : "";
+  if (!n) return;
+  b.replaceChildren(el("button", { class: "x", "aria-label": "Dismiss", onclick: () => { b.hidden = true; } }, "×"));
+  if (n.kind === "solved") {
+    b.append(el("div", {}, `Solved. Objective ${n.objective} (lower is better). `,
+      n.moved.length ? `Moved: ${n.moved.join(", ")}.` : "Nothing needed to move."));
+  } else if (n.kind === "infeasible") {
+    b.append(el("div", {}, "No solution. These cannot all hold together; unlock or relax any one:"),
+      el("ul", {}, ...n.core.map((c) => el("li", {}, c))));
+  } else b.append(el("div", {}, "The solver ran out of time."));
+}
+
+function renderUnplaced() {
+  const u = S.sessions.filter((s) => !s.placed && inWeek(s));
+  $("unplaced").replaceChildren(...(u.length ? [el("span", { class: "muted" }, "Unplaced:"),
+    ...u.map((s) => el("button", { onclick: () => select(s.id) }, s.id))] : []));
+}
+
+function renderGrid() {
+  const { days, open, close } = S.calendar;
+  const o = mins(open), span = mins(close) - o;
+  const g = $("grid");
+  g.replaceChildren();
+  const ticks = [];
+  for (let h = Math.ceil(o / 60 / 2) * 2; h * 60 <= mins(close); h += 2) ticks.push(h);
+  g.append(el("div", { class: "hd" }, "Room"));
+  for (const d of days) g.append(el("div", { class: "hd" }, d.toUpperCase(), el("div", { class: "axis" }, ...ticks.map((h) => el("span", {}, String(h))))));
+  const bad = badIds(), moved = new Set(S.changed);
+  const showSecond = $("second").checked;
+  let lastLoc = null;
+  for (const room of S.rooms) {
+    const used = S.sessions.some((s) => s.rooms.primary.concat(s.rooms.overflow).includes(room.id));
+    if (room.location !== "main" && !showSecond && !used) continue;
+    if (room.location !== lastLoc) { g.append(el("div", { class: "loc" }, room.location === "main" ? "Main clinic" : `Location: ${room.location}`)); lastLoc = room.location; }
+    g.append(el("div", { class: "rl" }, room.id, el("small", {}, room.attributes.join(", "))));
+    for (const d of days) {
+      const cell = el("div", { class: "cell" });
+      for (const p of S.pins) if (p.room === room.id && p.days.includes(d)) cell.append(el("div", { class: "blk pin", style: { left: "0", width: "100%" }, title: `${p.who} is pinned here` }, el("b", {}, p.who + " (pinned)")));
+      for (const s of S.sessions) {
+        if (!s.placed || s.day !== d || !inWeek(s)) continue;
+        const isOver = s.rooms.overflow.includes(room.id);
+        if (!isOver && !s.rooms.primary.includes(room.id)) continue;
+        const left = (100 * (mins(s.start) - o)) / span, width = (100 * (mins(s.end) - mins(s.start))) / span;
+        const cls = ["blk", isOver ? "overflow" : "", s.id === selected ? "sel" : "", moved.has(s.id) ? "moved" : "", bad.has(s.id) ? "bad" : ""].join(" ");
+        cell.append(el("div", {
+          class: cls, tabindex: "0", style: { left: `${left}%`, width: `${width}%`, background: colourFor(s.lead) },
+          title: `${s.id}\n${s.start}-${s.end}${isOver ? " (overflow)" : ""}`, onclick: () => select(s.id),
+          onkeydown: (e) => { if (e.key === "Enter") select(s.id); },
+        }, el("b", {}, s.lead || s.id), `${short(s.start)}-${short(s.end)}`));
+      }
+      g.append(cell);
+    }
+  }
+}
+
+function renderLegend() {
+  const leads = [...new Set(S.sessions.map((s) => s.lead).filter(Boolean))];
+  $("legend").replaceChildren(
+    ...leads.map((l) => el("span", {}, el("i", { style: { background: colourFor(l) } }), l)),
+    el("span", {}, el("i", { style: { background: NO_LEAD } }), "no lead"),
+    el("span", {}, "hatched = overflow room · orange dashed = moved by solver · red = hard violation"));
+}
+
+function select(id) {
+  selected = id;
+  const s = S.sessions.find((x) => x.id === id);
+  if (s && (s.weeks === "A" || s.weeks === "B")) week = s.weeks;
+  render();
+}
+
+function renderDetail() {
+  const d = $("detail"), s = S.sessions.find((x) => x.id === selected);
+  if (!s) { d.className = "muted"; d.textContent = "Click a session in the grid."; return; }
+  d.className = "";
+  const staff = [...s.staff.named, ...Object.entries(s.staff.count).map(([r, n]) => `${n} ${r}${n > 1 ? "s" : ""}`)];
+  const rows = [
+    ["Id", s.id], ["Lead", s.lead || "none"], ["Weeks", s.weeks],
+    ["When", s.day ? `${s.day} ${s.start || "?"}-${s.end || "?"}` : "unplaced"],
+    ["Rooms", [...s.rooms.primary, ...s.rooms.overflow.map((r) => r + " (overflow)")].join(", ") || "open"],
+    ["Staff", staff.join(", ") || "none"], ["Needs access", s.needs_access.join(", ") || "none"], ["Focus", s.focus.join(", ") || "none"],
+  ];
+  const dl = el("dl", {});
+  for (const [k, v] of rows) dl.append(el("dt", {}, k), el("dd", {}, v));
+  const labels = { day: "Day", time: "Time", rooms: "Rooms" };
+  const locks = Object.keys(labels).map((f) => {
+    const cb = el("input", { type: "checkbox", id: `lk-${f}` });
+    cb.checked = s.locks[f]; cb.disabled = !s.has[f] || busy;
+    cb.addEventListener("change", () => api("/api/lock", "POST", { session: s.id, field: f, locked: cb.checked }));
+    return el("label", { class: "lock" + (s.has[f] ? "" : " off") }, cb, `${labels[f]} ${s.has[f] ? (cb.checked ? "locked" : "open (solver may move)") : "(not set)"}`);
+  });
+  d.replaceChildren(dl, el("h2", {}, "Locks"), ...locks);
+}
+
+function renderViolations() {
+  const box = $("viol");
+  const groups = [["error", "Hard violations", true], ["soft", "Soft penalties", true], ["warning", "Open questions", false], ["info", "Info", false]];
+  box.replaceChildren();
+  for (const [sev, title, open] of groups) {
+    const items = S.violations.filter((v) => v.severity === sev);
+    if (!items.length) continue;
+    const ul = el("ul", { class: "viol" }, ...items.map((v) => el("li", {
+      class: `${sev}${v.sessions.length ? " click" : ""}`,
+      onclick: v.sessions.length ? () => select(v.sessions[0]) : null,
+    }, v.weight ? el("span", { class: "tag" }, `w${v.weight}`) : null, v.message)));
+    const det = el("details", {}, el("summary", {}, `${title} (${items.length})`), ul);
+    det.open = open;
+    box.append(det);
+  }
+  if (!box.children.length) box.append(el("div", { class: "muted" }, "Nothing to report."));
+}
+
+$("wA").onclick = () => { week = "A"; render(); };
+$("wB").onclick = () => { week = "B"; render(); };
+$("check").onclick = () => api("/api/check");
+$("solve").onclick = () => api("/api/solve");
+$("reset").onclick = () => { selected = null; api("/api/reset"); };
+$("second").onchange = () => S && renderGrid();
+$("bulk").onchange = (e) => { const v = e.target.value; e.target.value = ""; if (v) api("/api/lock", "POST", { locked: v === "lock" }); };
+api("/api/state", "GET");
+</script>
+</body>
+</html>
