@@ -178,7 +178,7 @@ sessions:
     end: "17:00"
     room_needs: [surgery_capable]                # every primary room
     rooms: {primary: [r4, r5, r6]}               # needs 3 surgery-capable rooms
-    staff: {count: {nurse: 2}}
+    staff: {named: [dina], count: {nurse: 2}}   # Dina closes surgery sales
 
   - id: beatrice_mon
     focus: [aesthetics, consults]                  # ASSUMED
