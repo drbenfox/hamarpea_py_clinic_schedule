@@ -1,0 +1,295 @@
+# Hamarpea room and staff plan: single source of truth.
+# Edit this file as facts change. `null` plus a TODO comment means "not known yet".
+# Times are 24h local. Week runs Sunday to Thursday. Plan repeats on a two-week cycle (A, B).
+
+version: 1
+
+calendar:
+  days: [sun, mon, tue, wed, thu]
+  open: "08:00"            # ASSUMED from earliest/latest sessions
+  close: "18:00"           # ASSUMED
+  slot_minutes: 30
+  cycle_weeks: [A, B]
+
+options:
+  layout_fixed: true        # fit-out just finished: no building changes, loose furniture only
+  curtain_room5: false      # true = allow room 5 to be used while others need the fridge (suboptimal)
+
+# ---------------------------------------------------------------- locations
+locations:
+  - id: main
+    name: Main clinic
+  - id: second
+    name: Second location    # barely used; fallback, e.g. for Dina's meeting room
+    rooms_known: true
+
+# -------------------------------------------------------------------- rooms
+# attributes are free text; add new ones whenever needed
+rooms:
+  - id: r1
+    location: main
+    attributes: [table, drug_fridge]             # no treatment bed (Liat had it removed)
+  - id: r2
+    location: main
+    attributes: [table, treatment_bed]           # ASSUMED standard treatment room
+  - id: r3
+    location: main
+    attributes: [meeting_room]                   # not a clinic room
+  - id: r4
+    location: main
+    attributes: [table, treatment_bed, surgery_capable, device_capable]
+  - id: r5
+    location: main
+    attributes: [treatment_bed, drug_fridge, surgery_capable, device_capable]   # no table
+  - id: r6
+    location: main
+    attributes: [table, treatment_bed, surgery_capable, device_capable]
+  # second site: 4 rooms, attributes unknown. Avoid unless no other way (prefer_main_site).
+  - id: s1
+    location: second
+    attributes: []                               # TODO
+  - id: s2
+    location: second
+    attributes: []                               # TODO
+  - id: s3
+    location: second
+    attributes: []                               # TODO
+  - id: s4
+    location: second
+    attributes: []                               # TODO
+  # reception can absorb overflow, but only as a last resort
+  - id: reception
+    location: main
+    attributes: [overflow_only]                  # soft-avoid: needs a rule or weight
+
+# ------------------------------------------------------------------- people
+people:
+  # doctors
+  - id: liat
+    role: doctor
+    unavailable_days: [tue]                      # out of office
+  - id: beatrice
+    role: doctor
+  - id: roni
+    role: doctor
+  - id: moran
+    role: doctor
+    notes: Consultations only. Works alone.
+
+  # nurses: placeholders, no availability limits. The plan states which days each is
+  # needed; real staff are rostered to match afterwards. Known real-world capacity
+  # (for the roster step, not the solver): Daria 4 shifts, Stav 2, Batzi 1 (Tue only, unconfirmed).
+  - id: n1
+    role: nurse
+  - id: n2
+    role: nurse
+  - id: n3
+    role: nurse
+
+  # sales
+  - id: dina
+    role: sales
+    works_with: [liat]
+    days: [sun, mon, tue, wed, thu]
+    notes: Closes surgery sales and meets clients in room 3.
+  - id: ruth
+    role: sales
+    aliases: [ruti]
+    works_with: [beatrice, roni]
+
+# ------------------------------------------------------------------ devices
+devices:
+  - id: sofwave
+    allowed_rooms: [r2, r4, r5, r6]              # r2 also possible
+  - id: morpheus
+    allowed_rooms: [r2, r4, r5, r6]
+
+# -------------------------------------------------------- appointment types
+# Second layer: what happens inside a session. Needed for every clinician and device.
+# clinician_minutes = clinician's time; room_minutes = total time the patient holds the room.
+appointment_types:
+  - id: roni_consult
+    lead: roni
+    clinician_minutes: 30                        # TODO: check whether this already includes treatment
+    room_minutes: null                           # TODO
+    close:
+      by: ruth
+      when: null                                 # TODO: before or after treatment
+      minutes: null                              # TODO: typical and worst case
+    room_needs: [table, treatment_bed]
+  - id: roni_treatment
+    lead: roni
+    clinician_minutes: 20
+    room_minutes: null                           # TODO: incl. numbing / turnover
+    close: null                                  # already consulted and paid
+    room_needs: [treatment_bed]
+    needs_access: [drug_fridge]
+  - id: roni_followup
+    lead: roni
+    clinician_minutes: 10
+    room_minutes: null                           # TODO
+    close: null
+    room_needs: [treatment_bed]
+  # TODO: same for liat, beatrice, moran, sofwave, morpheus
+
+# ----------------------------------------------------------------- sessions
+# weeks: weekly | A | B.  rooms.primary = rooms held; rooms.overflow = attached spill-over room.
+# staff.named = specific people; staff.count = any N people of that role.
+sessions:
+  - id: liat_clinic_sun
+    lead: liat
+    weeks: weekly
+    day: sun
+    start: "10:00"
+    end: "18:00"
+    needs_access: [drug_fridge]
+    rooms: {primary: [r1, r2]}
+    staff: {named: [dina], count: {nurse: 1}}
+    covers_tasks: [suture_removal]               # done by Liat's nurse, not a separate job (yet)
+
+  - id: liat_clinic_wed
+    lead: liat
+    weeks: weekly
+    day: wed
+    start: "10:00"
+    end: "18:00"
+    needs_access: [drug_fridge]
+    rooms: {primary: [r1, r2]}
+    staff: {named: [dina], count: {nurse: 1}}
+    covers_tasks: [suture_removal]
+
+  - id: liat_surgery_thu
+    lead: liat
+    weeks: weekly
+    day: thu
+    start: "08:00"
+    end: "17:00"
+    rooms: {primary: [r4, r5, r6]}               # needs 3 surgery-capable rooms
+    staff: {count: {nurse: 2}}
+
+  - id: beatrice_mon
+    lead: beatrice
+    weeks: A
+    day: mon
+    start: "09:00"
+    end: "16:00"
+    rooms: {primary: [r5, r6]}
+    staff: {named: [ruth], count: {nurse: 1}}
+    needs_access: [drug_fridge]
+
+  - id: beatrice_wed
+    lead: beatrice
+    weeks: B
+    day: wed                                     # overlaps Liat's clinic day on purpose
+    start: "09:00"
+    end: "16:00"
+    rooms: {primary: [r5, r6]}
+    staff: {named: [ruth], count: {nurse: 1}}
+    needs_access: [drug_fridge]
+
+  - id: roni_sun
+    lead: roni
+    weeks: weekly
+    day: sun
+    start: "10:00"
+    end: "15:00"
+    rooms: {primary: [r4, r6]}                   # wants two rooms
+    staff: {named: [ruth], count: {nurse: 2}}
+    needs_access: [drug_fridge]                  # staff walk into room 5 for drugs
+
+  - id: moran_tue
+    lead: moran
+    weeks: weekly
+    day: tue
+    start: "10:00"
+    end: "15:00"
+    rooms: {primary: [r4], preferred: [r1, r2]}  # currently r4; should move to r1 or r2
+    staff: {}
+
+  - id: device_treatments_tue
+    lead: null
+    weeks: weekly
+    day: tue
+    start: "08:00"                               # all day possible; goal is to expand device hours/days
+    end: "18:00"
+    rooms: {primary: [r5]}                       # whiteboard solution, not the only one
+    devices: null                                # TODO: which device(s)
+    staff: {count: {nurse: 1}}                   # ASSUMED one nurse
+
+  - id: device_consults_tue
+    lead: null
+    weeks: weekly
+    day: tue
+    start: "08:00"
+    end: "18:00"
+    rooms: {primary: [r6]}
+    staff: {count: {nurse: 1}}                   # ASSUMED one nurse
+
+# -------------------------------------------------------------------- tasks
+# Work that must be covered but is not (yet) its own session.
+tasks:
+  - id: suture_removal
+    currently: covered by the nurse in Liat's clinic sessions
+    may_become_session: true
+
+# -------------------------------------------------------------------- rules
+rules:
+  - id: dina_in_room3
+    type: pin
+    who: dina
+    room: r3
+    strength: hard
+
+  - id: fridge_access
+    type: shared_access
+    attribute: drug_fridge
+    strength: hard            # becomes soft if options.curtain_room5 is true
+    notes: >
+      While a session that needs the fridge runs, a fridge room must be one of
+      its own rooms or be empty. This is why devices do not run while Roni works.
+    fridges_interchangeable: true
+
+  - id: sales_pairings
+    type: pairing
+    pairs: [[dina, liat], [ruth, beatrice], [ruth, roni]]
+    strength: hard
+
+  # Staff preferences. Uncomment and edit as needed. soft = avoided when possible,
+  # hard = never. prefer_pairing works the same way in the other direction.
+  # - id: example_avoid
+  #   type: avoid_pairing
+  #   people: [doctor_id, nurse_id]
+  #   strength: soft
+  #   weight: 50
+
+  - id: prefer_main_site
+    type: prefer_location
+    location: main
+    strength: soft
+    weight: 100
+
+# ---------------------------------------------------------------- proposals
+# Ideas under discussion. Not part of the current plan.
+proposals:
+  - id: moran_to_room1
+    summary: Moran consults in r1 on Tuesday, freeing r4 for a second device room.
+  - id: roni_flow
+    status: not yet agreed
+    summary: >
+      Roni holds r4 and r6 as primary rooms with r5 as overflow. She alternates
+      between r4 and r6 while Ruth closes in the room she has left. A nurse preps
+      at the fridge in r5. r5 takes incoming patients and treatment-only patients
+      (already consulted and paid). A patient mid-close is never moved.
+    change: {session: roni_sun, rooms: {primary: [r4, r6], overflow: [r5]}}
+  - id: roni_extra_day
+    summary: Second weekly Roni clinic. Only fits the Mon/Wed Beatrice is not using (shared Ruth).
+  - id: beatrice_fixed_day
+    summary: Beatrice on one fixed weekly day instead of alternating Mon/Wed.
+  - id: more_device_sessions
+    summary: Devices on Sun after 15:00, Mon, and Wed in r4.
+  - id: room1_bed
+    summary: Treatment bed back in r1. Liat's call.
+  - id: room5_table
+    summary: Table in r5 so a doctor can run clinic there.
+  - id: dina_to_second_site
+    summary: Release r3 by moving Dina's meetings to the second location.
