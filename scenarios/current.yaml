@@ -223,26 +223,16 @@ sessions:
     rooms: {primary: [r4], preferred: [r1, r2]}  # currently r4; should move to r1 or r2
     staff: {}
 
-  - id: device_treatments_tue
-    focus: [devices]                  # ASSUMED
+  - id: device_tue
+    focus: [devices, consults]                   # ASSUMED
     lead: null
     weeks: weekly
     day: tue
     start: "08:00"                               # all day possible; goal is to expand device hours/days
     end: "18:00"
-    rooms: {primary: [r5]}                       # whiteboard solution, not the only one
+    rooms: {primary: [r5, r6]}                   # ONE event: treatments in r5, consults in r6; whiteboard solution, not the only one
     devices: null                                # TODO: which device(s)
-    staff: {count: {nurse: 1}}                   # ASSUMED one nurse
-
-  - id: device_consults_tue
-    focus: [consults, devices]                  # ASSUMED
-    lead: null
-    weeks: weekly
-    day: tue
-    start: "08:00"
-    end: "18:00"
-    rooms: {primary: [r6]}
-    staff: {count: {nurse: 1}}                   # ASSUMED one nurse
+    staff: {count: {nurse: 1}}                   # ASSUMED one nurse covers both rooms
 
 # ------------------------------------------------------------ focus targets
 # Desired weekly session hours per focus. Soft goals: report shows the gap.

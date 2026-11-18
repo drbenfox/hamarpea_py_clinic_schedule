@@ -12,6 +12,7 @@ from .checker import check
 from .loader import load_text
 from . import vcs
 from .models import Session
+from .closers import closers
 from .nursing import nursing
 from .paths import OUT
 from .solve import solve
@@ -82,6 +83,7 @@ class Workspace:
             "pins": pins,
             "violations": violations,
             "nursing": nursing(sc),
+            "closers": closers(sc),
             "changed": sorted(self.changed),
             "notice": self.notice,
             "edited": sc.model_dump(mode="json") != load_text(self.text).model_dump(mode="json"),

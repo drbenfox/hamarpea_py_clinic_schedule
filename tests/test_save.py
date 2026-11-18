@@ -82,9 +82,9 @@ def test_commit_needs_message_and_changes(repo):
 def test_nursing_numbers_for_seed():
     data = nursing(load_text(SEED.read_text()))
     a, b = data["weeks"]
-    assert [d["peak"] for d in a["days"]] == [3, 1, 2, 1, 2] and a["need_shifts"] == 9
-    assert [d["peak"] for d in b["days"]] == [3, 0, 2, 2, 2]
-    assert a["roster"]["capacity"] == 7 and a["roster"]["short_total"] == 2
+    assert [d["peak"] for d in a["days"]] == [3, 1, 1, 1, 2] and a["need_shifts"] == 8  # Tuesday device event is one session
+    assert [d["peak"] for d in b["days"]] == [3, 0, 1, 2, 2]
+    assert a["roster"]["capacity"] == 7 and a["roster"]["short_total"] == 1 and b["roster"]["short_total"] == 2
     assert a["roster"]["assignment"]["tue"] and "batzi" not in sum((v for k, v in a["roster"]["assignment"].items() if k != "tue"), [])
 
 

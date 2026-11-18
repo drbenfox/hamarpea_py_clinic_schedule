@@ -7,7 +7,7 @@ SEED = Path(__file__).parent.parent / "scenarios" / "current.yaml"
 
 def test_state_has_everything_the_page_needs():
     st = Workspace(SEED).state()
-    assert len(st["sessions"]) == 9 and st["calendar"]["days"][0] == "sun"
+    assert len(st["sessions"]) == 8 and st["calendar"]["days"][0] == "sun"
     assert st["pins"] == [{"room": "r3", "who": "dina", "days": ["sun", "mon", "tue", "wed", "thu"]}]
     assert not st["edited"] and st["notice"] is None
     assert any(v["severity"] == "soft" and v["sessions"] == ["moran_tue"] for v in st["violations"])
@@ -50,4 +50,15 @@ def test_state_carries_the_nurse_row():
     nursing = Workspace(SEED).state()["nursing"]
     sun = nursing["weeks"][0]["days"][0]
     assert sun["peak"] == 3 and sun["shifts"][0]["start"] == "09:30"
-    assert nursing["weeks"][0]["roster"]["short_total"] == 2
+    assert nursing["weeks"][0]["roster"]["short_total"] == 1
+
+
+def test_closers_work_the_doctors_hours_and_link_to_the_doctor():
+    closers = Workspace(SEED).state()["closers"]
+    assert closers["people"] == ["dina", "ruth"]
+    sun = {i["person"]: i for i in closers["weeks"][0]["days"][0]["items"]}
+    assert (sun["dina"]["doctor"], sun["dina"]["start"], sun["dina"]["end"], sun["dina"]["office"]) == ("liat", "10:00", "18:00", "r3")
+    assert (sun["ruth"]["doctor"], sun["ruth"]["start"], sun["ruth"]["end"]) == ("roni", "10:00", "15:00")
+    week_b_wed = {i["person"]: i["doctor"] for i in closers["weeks"][1]["days"][3]["items"]}
+    assert week_b_wed == {"dina": "liat", "ruth": "beatrice"}
+    assert closers["weeks"][0]["days"][1]["items"][0]["doctor"] == "beatrice"  # Monday, week A

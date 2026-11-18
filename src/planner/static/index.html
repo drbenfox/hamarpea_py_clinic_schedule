@@ -74,6 +74,7 @@ details summary { cursor: pointer; font-weight: 600; margin: 8px 0 4px; }
 .nsum { margin: 4px 0 8px; font-weight: 600; } .nsum.bad { color: var(--err); }
 .vl { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--line); }
 .ncell { height: 64px; cursor: pointer; }
+.blk.cl { bottom: auto; padding: 1px 4px; line-height: 1.5; white-space: nowrap; }
 .ncell.sel { outline: 2px solid var(--ink); outline-offset: -2px; }
 .bar { position: absolute; bottom: 0; background: var(--soft); color: #fff; font-size: 11px; font-weight: 600; text-align: center; border-right: 1px solid var(--panel); overflow: hidden; }
 .bar.short { background: var(--err); }
@@ -260,6 +261,7 @@ function buildGrid(wk, interactive) {
     }
   }
   if (S.nursing) nurseRow(g, wk, interactive, o, span, vlines);
+  if (S.closers && S.closers.people.length) closerRow(g, wk, interactive, o, span, vlines);
   return g;
 }
 
@@ -285,6 +287,26 @@ function nurseRow(g, wk, interactive, o, span, vlines) {
   }
 }
 
+function closerRow(g, wk, interactive, o, span, vlines) {
+  const data = S.closers, w = data.weeks.find((x) => x.week === wk), n = data.people.length;
+  g.append(el("div", { class: "rl", title: "Sales closers work the same hours as their doctor" }, "Closer", el("small", {}, data.people.join(", "))));
+  for (const d of w.days) {
+    const cell = el("div", { class: "cell", style: { height: `${Math.max(40, n * 24)}px` } });
+    vlines(cell);
+    for (const it of d.items) {
+      const lane = data.people.indexOf(it.person);
+      const props = {
+        class: "blk cl",
+        style: { left: `${(100 * (mins(it.start) - o)) / span}%`, width: `${(100 * (mins(it.end) - mins(it.start))) / span}%`, top: `${(100 * lane) / n}%`, height: `calc(${100 / n}% - 2px)`, background: colourFor(it.doctor) },
+        title: `${it.person} closes for ${it.doctor || "no doctor"} (${it.session})\n${it.start}-${it.end}` + (it.office ? `\nworks from office ${it.office}` : ""),
+      };
+      if (interactive) Object.assign(props, { onclick: () => select(it.session) });
+      cell.append(el("div", props, `${it.person} ${short(it.start)}-${short(it.end)}`));
+    }
+    g.append(cell);
+  }
+}
+
 function selectNurse(day) { selectedNurse = day; selected = null; render(); }
 
 function renderGrid() {
@@ -299,6 +321,7 @@ function renderLegend() {
     ...leads.map((l) => el("span", {}, el("i", { style: { background: colourFor(l) } }), l)),
     el("span", {}, el("i", { style: { background: NO_LEAD } }), "no lead"),
     el("span", {}, "hatched = overflow room · orange dashed = moved by solver · red outline = hard violation"),
+    el("span", {}, "Closer row: sales staff, same hours as their doctor (colour = doctor)"),
     el("span", {}, "Nurses row: bar height = nurses needed (arrive 30 min early), dashed green = rostered, red = short"));
 }
 
