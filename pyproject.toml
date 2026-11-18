@@ -25,4 +25,4 @@ dev = [
 ]
 
 [project.scripts]
-planner = "planner.cli:main"
+clinic-planner = "planner.cli:main"

@@ -6,11 +6,11 @@ Plans how rooms, staff and devices are used across a two-week (A/B) clinic cycle
 
 ```
 uv sync
-uv run planner check scenarios/current.yaml   # exit 1 if a hard rule is broken
-uv run planner solve scenarios/current.yaml [--json out/solved.json] [--time 30]
-uv run planner report scenarios/current.yaml  # room grid, people, idle time, utilisation
-uv run planner whatif scenarios/current.yaml patches/01_roni_extra_day.yaml [more patches...]
-uv run planner serve                         # web UI at http://127.0.0.1:8000
+uv run clinic-planner check scenarios/current.yaml   # exit 1 if a hard rule is broken
+uv run clinic-planner solve scenarios/current.yaml [--json out/solved.json] [--time 30]
+uv run clinic-planner report scenarios/current.yaml  # room grid, people, idle time, utilisation
+uv run clinic-planner whatif scenarios/current.yaml patches/01_roni_extra_day.yaml [more patches...]
+uv run clinic-planner serve                         # web UI at http://127.0.0.1:8765
 uv run pytest
 ```
 

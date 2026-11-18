@@ -18,7 +18,7 @@ def _find(name: str, folder: str) -> Path:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="planner")
+    parser = argparse.ArgumentParser(prog="clinic-planner")
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("check", help="list every rule a fully placed plan breaks")
     p.add_argument("scenario", nargs="?", default=str(DEFAULT_SCENARIO), help="scenario YAML (default: the project's scenarios/current.yaml)")
@@ -33,7 +33,8 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("serve", help="local web UI")
     p.add_argument("scenario", nargs="?", default=str(DEFAULT_SCENARIO), help="scenario YAML (default: the project's scenarios/current.yaml)")
     p.add_argument("--host", default="127.0.0.1")
-    p.add_argument("--port", type=int, default=8000)
+    p.add_argument("--port", type=int, default=8765)
+    p.add_argument("--no-browser", action="store_true", help="do not open the page automatically")
     p = sub.add_parser("report", help="room grid, people, idle time and utilisation")
     p.add_argument("scenario", nargs="?", default=str(DEFAULT_SCENARIO), help="scenario YAML (default: the project's scenarios/current.yaml)")
     args = parser.parse_args(argv)
@@ -48,18 +49,34 @@ def main(argv: list[str] | None = None) -> int:
         print(output)
         return 0 if ok else 1
     if args.command == "serve":
-        import uvicorn
-
-        from .web import create_app
-
-        uvicorn.run(create_app(args.scenario), host=args.host, port=args.port)
-        return 0
+        return _serve(args)
     if args.command == "report":
         print(report(load_scenario(args.scenario)))
         return 0
     if args.command == "solve":
         return _solve(args)
     return 2
+
+
+def _serve(args) -> int:
+    import socket
+    import threading
+    import webbrowser
+
+    import uvicorn
+
+    from .web import create_app
+
+    with socket.socket() as probe:
+        if probe.connect_ex((args.host, args.port)) == 0:
+            print(f"Port {args.port} is already in use by another program. Try --port {args.port + 1}.")
+            return 1
+    url = f"http://{args.host}:{args.port}"
+    print(f"Planner running at {url}  (Ctrl+C to stop)", flush=True)
+    if not args.no_browser:
+        threading.Timer(1.5, webbrowser.open, [url]).start()
+    uvicorn.run(create_app(args.scenario), host=args.host, port=args.port, log_level="warning")
+    return 0
 
 
 def _solve(args) -> int:
