@@ -10,6 +10,7 @@ uv run clinic-planner check scenarios/current.yaml   # exit 1 if a hard rule is 
 uv run clinic-planner solve scenarios/current.yaml [--json out/solved.json] [--time 30]
 uv run clinic-planner report scenarios/current.yaml  # room grid, people, idle time, utilisation
 uv run clinic-planner whatif scenarios/current.yaml patches/01_roni_extra_day.yaml [more patches...]
+uv run clinic-planner nursing                 # nurses needed per day vs the real roster
 uv run clinic-planner serve                         # web UI at http://127.0.0.1:8765
 uv run pytest
 ```
@@ -29,7 +30,16 @@ A session field is fixed when it has a value, and open when it is null or unlock
 
 One page: rooms by days with a Week A/B toggle, blocks coloured by lead, a room-timeline inside each cell (08-18). Click a session for details and its Day / Time / Rooms locks. Unlocked fields can be moved by Solve; moved sessions get an orange dashed outline and sessions in hard violations a red one. The side panel lists hard violations, soft penalties, open questions and info; click one to select its session.
 
-Buttons: Check (re-run rules), Solve, Reset (reload the YAML). Edits live in memory only, so the page shows "edited, not saved". Export JSON downloads the current plan. People, rooms and rules are edited in the YAML.
+Buttons: Check (re-run rules), Solve, Reset (reload the YAML), File…, PDF.
+
+- **Schedule / Nursing:** the Nursing view draws one vertical bar chart per day (nurses needed by time of day). The dashed line is how many nurses the `roster` gives that day; bars above it turn red.
+- **File…:** *Save to file* writes the plan back into the YAML, changing only the session lines that moved (comments are kept; it refuses if it cannot do that safely). *Save & commit* also makes a git commit of that file. History lists past versions with *Restore*. Pushing stays in the terminal.
+- **PDF:** opens the browser's print dialog with one landscape page per week (room plan plus nurse charts). Choose "Save as PDF".
+- Export JSON downloads the current plan. People, rooms, roster and rules are edited in the YAML.
+
+## Nursing
+
+Nurses are anonymous (`n1`..) for the solver. The real nurses and their limits live under `roster:` in the YAML; the nursing report assigns them to days to cover each day's peak and shows what is short.
 
 ## What-if patches
 

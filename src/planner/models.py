@@ -56,6 +56,12 @@ class Person(_Base):
     notes: str | None = None
 
 
+class RosterEntry(_Base):
+    name: str
+    max_shifts: int | None = None
+    days: list[str] | None = None
+
+
 class Device(_Base):
     id: str
     allowed_rooms: list[str] = []
@@ -121,6 +127,7 @@ class Scenario(_Base):
     locations: list[Location] = []
     rooms: list[Room] = []
     people: list[Person] = []
+    roster: dict[str, list[RosterEntry]] = {}
     devices: list[Device] = []
     appointment_types: list[dict] = []
     sessions: list[Session] = []

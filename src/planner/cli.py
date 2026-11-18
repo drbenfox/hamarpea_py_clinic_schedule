@@ -5,6 +5,7 @@ from pathlib import Path
 
 from .checker import check
 from .loader import load_scenario
+from .nursing import nursing, nursing_text
 from .paths import DEFAULT_SCENARIO, ROOT
 from .report import report
 from .solve import solve
@@ -30,6 +31,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("scenario")
     p.add_argument("patches", nargs="+", help="patch YAML files, applied in order")
     p.add_argument("--time", type=float, default=30.0)
+    p = sub.add_parser("nursing", help="nurses needed per day and whether the roster can cover it")
+    p.add_argument("scenario", nargs="?", default=str(DEFAULT_SCENARIO), help="scenario YAML (default: the project's scenarios/current.yaml)")
     p = sub.add_parser("serve", help="local web UI")
     p.add_argument("scenario", nargs="?", default=str(DEFAULT_SCENARIO), help="scenario YAML (default: the project's scenarios/current.yaml)")
     p.add_argument("--host", default="127.0.0.1")
@@ -48,6 +51,9 @@ def main(argv: list[str] | None = None) -> int:
         output, ok = run_whatif(text, [load_patch(_find(x, "patches")) for x in args.patches], args.time)
         print(output)
         return 0 if ok else 1
+    if args.command == "nursing":
+        print(nursing_text(nursing(load_scenario(args.scenario))))
+        return 0
     if args.command == "serve":
         return _serve(args)
     if args.command == "report":

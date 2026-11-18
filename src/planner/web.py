@@ -10,9 +10,12 @@ from pydantic import BaseModel
 
 from .checker import check
 from .loader import load_text
+from . import vcs
 from .models import Session
+from .nursing import nursing
 from .paths import OUT
 from .solve import solve
+from .yamlsave import patch_text
 
 STATIC = Path(__file__).parent / "static"
 FIELDS = ("day", "time", "rooms")
@@ -103,8 +106,33 @@ class Workspace:
         else:
             self.notice = {"kind": "timeout"}
 
+    def save(self) -> None:
+        new = patch_text(self.text, self.sc)
+        self.path.write_text(new)
+        self.text = new
+        self.sc.notes = load_text(new).notes
+        self.notice = {"kind": "saved"}
+
+    def commit(self, message: str) -> None:
+        self.save()
+        sha = vcs.commit(self.path, message)
+        self.notice = {"kind": "saved", "commit": sha}
+
+    def restore(self, sha: str) -> None:
+        vcs.restore(self.path, sha)
+        self.reset()
+        self.notice = {"kind": "saved", "restored": sha}
+
     def export(self) -> dict:
         return {"sessions": self.sc.model_dump(mode="json")["sessions"]}
+
+
+class MessageBody(BaseModel):
+    message: str
+
+
+class ShaBody(BaseModel):
+    sha: str
 
 
 class LockBody(BaseModel):
@@ -144,6 +172,36 @@ def create_app(path: str | Path) -> FastAPI:
         with ws.mutex:
             ws.set_lock(body.session, body.field, body.locked)
             return ws.state()
+
+    def guarded(fn) -> dict:
+        with ws.mutex:
+            try:
+                fn()
+            except ValueError as e:
+                ws.notice = {"kind": "error", "message": str(e)}
+            return ws.state()
+
+    @app.get("/api/nursing")
+    def nursing_report() -> dict:
+        with ws.mutex:
+            return nursing(ws.sc)
+
+    @app.get("/api/history")
+    def history() -> dict:
+        with ws.mutex:
+            return {**vcs.info(ws.path), "file": ws.path.name}
+
+    @app.post("/api/save")
+    def save() -> dict:
+        return guarded(ws.save)
+
+    @app.post("/api/commit")
+    def commit(body: MessageBody) -> dict:
+        return guarded(lambda: ws.commit(body.message))
+
+    @app.post("/api/restore")
+    def restore(body: ShaBody) -> dict:
+        return guarded(lambda: ws.restore(body.sha))
 
     @app.get("/api/export")
     def export() -> FileResponse:

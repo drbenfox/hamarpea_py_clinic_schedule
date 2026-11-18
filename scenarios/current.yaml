@@ -76,9 +76,8 @@ people:
     role: doctor
     notes: Consultations only. Works alone.
 
-  # nurses: placeholders, no availability limits. The plan states which days each is
-  # needed; real staff are rostered to match afterwards. Known real-world capacity
-  # (for the roster step, not the solver): Daria 4 shifts, Stav 2, Batzi 1 (Tue only, unconfirmed).
+  # nurses: anonymous placeholders for the solver, no availability limits.
+  # Real nurses and their limits are under `roster` below.
   - id: n1
     role: nurse
   - id: n2
@@ -96,6 +95,15 @@ people:
     role: sales
     aliases: [ruti]
     works_with: [beatrice, roni]
+
+# ------------------------------------------------------------------- roster
+# Real staff per role. The nursing report checks whether the plan can be staffed with them;
+# the solver itself only uses the anonymous pool above.
+roster:
+  nurse:
+    - {name: daria, max_shifts: 4}
+    - {name: stav, max_shifts: 2}
+    - {name: batzi, max_shifts: 1, days: [tue]}   # UNCONFIRMED: Tuesday only, 1 shift
 
 # ------------------------------------------------------------------ devices
 devices:
@@ -176,8 +184,8 @@ sessions:
     lead: beatrice
     weeks: A
     day: mon
-    start: "09:00"
-    end: "16:00"
+    start: "08:00"
+    end: "18:00"
     rooms: {primary: [r5, r6]}
     staff: {named: [ruth], count: {nurse: 1}}
     needs_access: [drug_fridge]
@@ -187,8 +195,8 @@ sessions:
     lead: beatrice
     weeks: B
     day: wed                                     # overlaps Liat's clinic day on purpose
-    start: "09:00"
-    end: "16:00"
+    start: "08:00"
+    end: "18:00"
     rooms: {primary: [r5, r6]}
     staff: {named: [ruth], count: {nurse: 1}}
     needs_access: [drug_fridge]

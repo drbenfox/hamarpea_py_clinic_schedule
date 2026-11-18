@@ -69,15 +69,53 @@ dd { margin: 0; word-break: break-word; }
 .tag { font-size: 11px; font-weight: 600; margin-right: 6px; }
 details summary { cursor: pointer; font-weight: 600; margin: 8px 0 4px; }
 .muted { color: var(--muted); }
+[hidden] { display: none !important; }
+.nsum { margin: 4px 0 8px; font-weight: 600; } .nsum.bad { color: var(--err); }
+.charts { display: grid; grid-template-columns: repeat(5, minmax(130px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.dc { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+.dc h4 { margin: 0 0 6px; font-size: 13px; display: flex; justify-content: space-between; }
+.chart { position: relative; height: 120px; border-bottom: 2px solid var(--ink); margin-left: 14px; }
+.gl { position: absolute; left: 0; right: 0; border-top: 1px solid var(--line); }
+.gl span { position: absolute; left: -14px; top: -8px; font-size: 10px; color: var(--muted); }
+.bar { position: absolute; bottom: 0; background: var(--soft); color: #fff; font-size: 11px; font-weight: 600; text-align: center; border-right: 1px solid var(--panel); overflow: hidden; }
+.bar.short { background: var(--err); }
+.cap { position: absolute; left: 0; right: 0; border-top: 2px dashed var(--ok); }
+.axisx { display: flex; justify-content: space-between; margin-left: 14px; font-size: 10px; color: var(--muted); }
+.dc .who { font-size: 12px; margin-top: 6px; } .dc .who.bad { color: var(--err); font-weight: 600; }
+.dc .ses { font-size: 11px; color: var(--muted); }
+h3 { font-size: 15px; margin: 14px 0 4px; }
+dialog { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); width: 560px; max-width: 94vw; padding: 16px; }
+dialog::backdrop { background: rgba(0,0,0,.4); }
+dialog h3 { margin-top: 0; } dialog .row { display: flex; gap: 8px; margin: 8px 0; } dialog input[type=text] { flex: 1; font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
+.hist { list-style: none; margin: 6px 0 0; padding: 0; max-height: 240px; overflow: auto; }
+.hist li { display: flex; gap: 8px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.hist li span:nth-child(3) { flex: 1; } .hist code { color: var(--muted); }
+#fileMsg { min-height: 1.4em; font-size: 13px; }
+#print { display: none; }
+@media print {
+  :root { --bg: #fff; --panel: #fff; --ink: #1c2330; --muted: #5b6470; --line: #c9ced6; --err: #b3261e; --warn: #8a5a00; --soft: #1f5fa8; --ok: #0b7a5a; }
+  @page { size: A4 landscape; margin: 10mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { display: block; height: auto; background: #fff; color: #000; }
+  header, main, dialog { display: none !important; }
+  #print { display: block; }
+  #print .page { break-after: page; }
+  #print .page:last-child { break-after: auto; }
+  #print .grid { min-width: 0; }
+  #print .cell { height: 30px; }
+}
 </style>
 </head>
 <body>
 <header>
   <h1>Clinic planner</h1>
   <div class="seg" role="group" aria-label="Week"><button id="wA" data-w="A">Week A</button><button id="wB" data-w="B">Week B</button></div>
+  <div class="seg" role="group" aria-label="View"><button id="vS" class="on">Schedule</button><button id="vN">Nursing</button></div>
   <button id="check">Check</button>
   <button id="solve" class="primary">Solve</button>
   <button id="reset">Reset</button>
+  <button id="file">File…</button>
+  <button id="pdf">PDF</button>
   <select id="bulk" aria-label="All sessions"><option value="">All sessions…</option><option value="lock">Lock all</option><option value="unlock">Unlock all</option></select>
   <label><input type="checkbox" id="second"> second site</label>
   <span class="spacer"></span>
@@ -89,6 +127,7 @@ details summary { cursor: pointer; font-weight: 600; margin: 8px 0 4px; }
   <div id="left">
     <div id="banner" hidden></div>
     <div id="unplaced"></div>
+    <div id="nursing" hidden></div>
     <div id="grid" class="grid"></div>
     <div id="legend" class="legend"></div>
   </div>
@@ -99,11 +138,22 @@ details summary { cursor: pointer; font-weight: 600; margin: 8px 0 4px; }
     <div id="viol"></div>
   </aside>
 </main>
+<div id="print"></div>
+<dialog id="filedlg">
+  <h3>Plan file</h3>
+  <div id="fileinfo" class="muted"></div>
+  <div class="row"><button id="fsave">Save to file</button></div>
+  <div class="row"><input type="text" id="fmsg" placeholder="Commit message, e.g. Roni moves to Monday"><button id="fcommit" class="primary">Save &amp; commit</button></div>
+  <div id="fileMsg"></div>
+  <h2>History</h2>
+  <ul id="hist" class="hist"></ul>
+  <div class="row"><span class="spacer"></span><button id="fclose">Close</button></div>
+</dialog>
 <script>
 "use strict";
 const PALETTE = ["#1f5fa8", "#b8470b", "#0b7a5a", "#7a4a9e", "#00798c", "#8a5a00"];
 const NO_LEAD = "#5b6470";
-let S = null, week = "A", selected = null, busy = false;
+let S = null, week = "A", view = "S", selected = null, busy = false;
 
 const $ = (id) => document.getElementById(id);
 function el(tag, props = {}, ...kids) {
@@ -150,12 +200,16 @@ function render() {
   $("edited").hidden = !S.edited;
   const errs = S.violations.filter((v) => v.severity === "error").length;
   $("status").textContent = errs ? `${errs} hard violation${errs > 1 ? "s" : ""}` : "no hard violations";
+  $("vS").classList.toggle("on", view === "S");
+  $("vN").classList.toggle("on", view === "N");
+  $("unplaced").hidden = $("legend").hidden = $("nursing").hidden = true;
+  if (view === "S") { $("unplaced").hidden = $("legend").hidden = false; } else { $("nursing").hidden = false; renderNursing(); }
   renderBanner(); renderUnplaced(); renderGrid(); renderLegend(); renderDetail(); renderViolations();
 }
 
 function renderBanner() {
   const b = $("banner"), n = S.notice;
-  b.hidden = !n; b.className = n ? n.kind : "";
+  b.hidden = !n; b.className = n ? (n.kind === "saved" ? "solved" : n.kind === "error" ? "infeasible" : n.kind) : "";
   if (!n) return;
   b.replaceChildren(el("button", { class: "x", "aria-label": "Dismiss", onclick: () => { b.hidden = true; } }, "×"));
   if (n.kind === "solved") {
@@ -164,6 +218,10 @@ function renderBanner() {
   } else if (n.kind === "infeasible") {
     b.append(el("div", {}, "No solution. These cannot all hold together; unlock or relax any one:"),
       el("ul", {}, ...n.core.map((c) => el("li", {}, c))));
+  } else if (n.kind === "saved") {
+    b.append(el("div", {}, n.restored ? `Restored version ${n.restored}.` : n.commit ? `Saved and committed (${n.commit}).` : "Saved to file."));
+  } else if (n.kind === "error") {
+    b.append(el("div", {}, n.message));
   } else b.append(el("div", {}, "The solver ran out of time."));
 }
 
@@ -173,17 +231,18 @@ function renderUnplaced() {
     ...u.map((s) => el("button", { onclick: () => select(s.id) }, s.id))] : []));
 }
 
-function renderGrid() {
+const inWk = (s, wk) => s.weeks === "weekly" || s.weeks === wk;
+
+function buildGrid(wk, interactive) {
   const { days, open, close } = S.calendar;
   const o = mins(open), span = mins(close) - o;
-  const g = $("grid");
-  g.replaceChildren();
+  const g = el("div", { class: "grid" });
   const ticks = [];
   for (let h = Math.ceil(o / 60 / 2) * 2; h * 60 <= mins(close); h += 2) ticks.push(h);
   g.append(el("div", { class: "hd" }, "Room"));
   for (const d of days) g.append(el("div", { class: "hd" }, d.toUpperCase(), el("div", { class: "axis" }, ...ticks.map((h) => el("span", {}, String(h))))));
-  const bad = badIds(), moved = new Set(S.changed);
-  const showSecond = $("second").checked;
+  const bad = interactive ? badIds() : new Set(), moved = interactive ? new Set(S.changed) : new Set();
+  const showSecond = interactive && $("second").checked;
   let lastLoc = null;
   for (const room of S.rooms) {
     const used = S.sessions.some((s) => s.rooms.primary.concat(s.rooms.overflow).includes(room.id));
@@ -194,20 +253,74 @@ function renderGrid() {
       const cell = el("div", { class: "cell" });
       for (const p of S.pins) if (p.room === room.id && p.days.includes(d)) cell.append(el("div", { class: "blk pin", style: { left: "0", width: "100%" }, title: `${p.who} is pinned here` }, el("b", {}, p.who + " (pinned)")));
       for (const s of S.sessions) {
-        if (!s.placed || s.day !== d || !inWeek(s)) continue;
+        if (!s.placed || s.day !== d || !inWk(s, wk)) continue;
         const isOver = s.rooms.overflow.includes(room.id);
         if (!isOver && !s.rooms.primary.includes(room.id)) continue;
         const left = (100 * (mins(s.start) - o)) / span, width = (100 * (mins(s.end) - mins(s.start))) / span;
-        const cls = ["blk", isOver ? "overflow" : "", s.id === selected ? "sel" : "", moved.has(s.id) ? "moved" : "", bad.has(s.id) ? "bad" : ""].join(" ");
-        cell.append(el("div", {
-          class: cls, tabindex: "0", style: { left: `${left}%`, width: `${width}%`, background: colourFor(s.lead) },
-          title: `${s.id}\n${s.start}-${s.end}${isOver ? " (overflow)" : ""}`, onclick: () => select(s.id),
-          onkeydown: (e) => { if (e.key === "Enter") select(s.id); },
-        }, el("b", {}, s.lead || s.id), `${short(s.start)}-${short(s.end)}`));
+        const cls = ["blk", isOver ? "overflow" : "", interactive && s.id === selected ? "sel" : "", moved.has(s.id) ? "moved" : "", bad.has(s.id) ? "bad" : ""].join(" ");
+        const props = { class: cls, style: { left: `${left}%`, width: `${width}%`, background: colourFor(s.lead) }, title: `${s.id}\n${s.start}-${s.end}${isOver ? " (overflow)" : ""}` };
+        if (interactive) Object.assign(props, { tabindex: "0", onclick: () => select(s.id), onkeydown: (e) => { if (e.key === "Enter") select(s.id); } });
+        cell.append(el("div", props, el("b", {}, s.lead || s.id), `${short(s.start)}-${short(s.end)}`));
       }
       g.append(cell);
     }
   }
+  return g;
+}
+
+function renderGrid() {
+  const g = buildGrid(week, true);
+  g.id = "grid"; g.hidden = view === "N";
+  $("grid").replaceWith(g);
+}
+
+// ---- nursing view: one vertical bar chart per day
+function dayChart(d, r, data) {
+  const { open, close } = S.calendar;
+  const o = mins(open), span = mins(close) - o;
+  const assigned = r ? (r.assignment[d.day] || []).length : null;
+  const maxY = Math.max(3, d.peak, assigned || 0);
+  const chart = el("div", { class: "chart" });
+  for (let i = 1; i <= maxY; i++) chart.append(el("div", { class: "gl", style: { bottom: `${(100 * i) / maxY}%` } }, el("span", {}, String(i))));
+  for (const g of d.segments) {
+    const isShort = assigned !== null && g.need > assigned;
+    chart.append(el("div", {
+      class: "bar" + (isShort ? " short" : ""),
+      style: { left: `${(100 * (mins(g.start) - o)) / span}%`, width: `${(100 * (mins(g.end) - mins(g.start))) / span}%`, height: `${(100 * g.need) / maxY}%` },
+      title: `${g.start}-${g.end}: ${g.need} needed\n${g.sessions.join(", ")}`,
+    }, String(g.need)));
+  }
+  if (assigned) chart.append(el("div", { class: "cap", style: { bottom: `${(100 * assigned) / maxY}%` }, title: `${assigned} rostered` }));
+  const gap = r && r.shortfall[d.day];
+  const who = r ? ((r.assignment[d.day] || []).join(", ") || "nobody") + (gap ? ` · short ${gap}` : "") : `pool of ${data.pool}`;
+  return el("div", { class: "dc" },
+    el("h4", {}, el("span", {}, d.day.toUpperCase()), el("span", { class: "muted" }, d.peak ? `peak ${d.peak}` : "none")),
+    chart, el("div", { class: "axisx" }, el("span", {}, short(open)), el("span", {}, short(close))),
+    el("div", { class: "who" + (gap ? " bad" : "") }, d.peak ? who : "no nurse needed"),
+    el("div", { class: "ses" }, d.sessions.join(", ")));
+}
+
+function nursingInto(box, data, weeks) {
+  box.replaceChildren();
+  for (const wk of data.weeks.filter((w) => weeks.includes(w.week))) {
+    const r = wk.roster;
+    const gap = r && r.short_total;
+    box.append(el("h3", {}, `Nurses needed, week ${wk.week}`),
+      el("div", { class: "nsum" + (gap ? " bad" : "") },
+        `${wk.need_shifts} nurse-shifts (${wk.nurse_hours} nurse-hours)`,
+        r ? ` · roster can give ${r.capacity}` + (gap ? ` · short by ${gap}` : " · covered") : ""),
+      el("div", { class: "charts" }, ...wk.days.map((d) => dayChart(d, r, data))));
+  }
+  box.append(el("div", { class: "legend" },
+    el("span", {}, el("i", { style: { background: "var(--soft)" } }), "nurses needed (by time of day)"),
+    el("span", {}, el("i", { style: { background: "var(--err)" } }), "more than rostered"),
+    el("span", {}, el("i", { style: { background: "var(--ok)" } }), "dashed line = nurses rostered that day"),
+    data.people.length ? el("span", {}, "roster: " + data.people.map((p) => `${p.name} ${p.max_shifts ?? "any"}${p.days ? " (" + p.days.join("/") + ")" : ""}`).join(", ")) : null));
+}
+
+async function renderNursing() {
+  const data = await (await fetch("/api/nursing")).json();
+  if (view === "N") nursingInto($("nursing"), data, [week]);
 }
 
 function renderLegend() {
@@ -266,6 +379,8 @@ function renderViolations() {
   if (!box.children.length) box.append(el("div", { class: "muted" }, "Nothing to report."));
 }
 
+$("vS").onclick = () => { view = "S"; render(); };
+$("vN").onclick = () => { view = "N"; render(); };
 $("wA").onclick = () => { week = "A"; render(); };
 $("wB").onclick = () => { week = "B"; render(); };
 $("check").onclick = () => api("/api/check");
@@ -273,6 +388,50 @@ $("solve").onclick = () => api("/api/solve");
 $("reset").onclick = () => { selected = null; api("/api/reset"); };
 $("second").onchange = () => S && renderGrid();
 $("bulk").onchange = (e) => { const v = e.target.value; e.target.value = ""; if (v) api("/api/lock", "POST", { locked: v === "lock" }); };
+
+async function refreshFile() {
+  const h = await (await fetch("/api/history")).json();
+  $("fileinfo").textContent = h.repo
+    ? `${h.file} · ${h.dirty ? "differs from the last commit" : "matches the last commit"}${S.edited ? " · unsaved edits in the page" : ""}`
+    : `${h.file} · not in a git repository (history unavailable)`;
+  $("fcommit").disabled = !h.repo;
+  $("hist").replaceChildren(...h.history.map((v) => el("li", {}, el("code", {}, v.sha), el("span", { class: "muted" }, v.date), el("span", {}, v.subject),
+    el("button", { onclick: async () => {
+      if (!confirm(`Replace the file with version ${v.sha}? Unsaved changes are lost.`)) return;
+      await fileAction("/api/restore", { sha: v.sha });
+    } }, "Restore"))));
+}
+async function fileAction(path, body) {
+  await api(path, "POST", body);
+  const n = S.notice;
+  $("fileMsg").textContent = n ? (n.kind === "error" ? n.message : n.kind === "saved" ? (n.restored ? `Restored ${n.restored}.` : n.commit ? `Committed ${n.commit}.` : "Saved.") : "") : "";
+  if (n && n.kind === "saved") $("fmsg").value = "";
+  refreshFile();
+}
+$("file").onclick = () => { $("fileMsg").textContent = ""; $("filedlg").showModal(); refreshFile(); };
+$("fclose").onclick = () => $("filedlg").close();
+$("fsave").onclick = () => fileAction("/api/save");
+$("fcommit").onclick = () => fileAction("/api/commit", { message: $("fmsg").value });
+
+$("pdf").onclick = async () => {
+  const data = await (await fetch("/api/nursing")).json();
+  const box = $("print");
+  box.replaceChildren();
+  for (const wk of S.calendar.cycle_weeks) {
+    const legend = $("legend").cloneNode(true);
+    legend.hidden = false; legend.removeAttribute("id");
+    const page = el("div", { class: "page" }, el("h3", {}, `Room plan, week ${wk}`), buildGrid(wk, false), legend);
+    const nurses = el("div", {});
+    nursingInto(nurses, data, [wk]);
+    page.append(nurses);
+    box.append(page);
+  }
+  const title = document.title;
+  document.title = "hamarpea-room-plan";
+  window.onafterprint = () => { document.title = title; box.replaceChildren(); window.onafterprint = null; };
+  window.print();
+};
+
 api("/api/state", "GET");
 </script>
 </body>
