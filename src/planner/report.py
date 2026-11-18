@@ -22,6 +22,36 @@ def _pinned(plan: Plan) -> dict[str, list[str]]:
     return out
 
 
+def _day_busy(occs: list[Occ], pinned: bool, open_m: int, day_minutes: int) -> int:
+    if pinned:
+        return day_minutes
+    covered, end = 0, open_m
+    for a, b in sorted((o.start, o.end) for o in occs):
+        a = max(a, end)
+        covered += max(0, b - a)
+        end = max(end, b)
+    return covered
+
+
+def utilisation(sc: Scenario) -> dict[str, dict[str, float]]:
+    """room -> week -> percent of open hours in use."""
+    plan = build_plan(sc)
+    pins = _pinned(plan)
+    cal = sc.calendar
+    open_m = to_minutes(cal.open)
+    dm = to_minutes(cal.close) - open_m
+    return {
+        r.id: {
+            w: 100 * sum(
+                _day_busy([o for o in plan.occs_on(w, d) if r.id in o.rooms], d in pins.get(r.id, []), open_m, dm)
+                for d in cal.days
+            ) / (dm * len(cal.days))
+            for w in cal.cycle_weeks
+        }
+        for r in sc.rooms
+    }
+
+
 def _table(rows: list[list[str]]) -> list[str]:
     widths = [max(len(r[c]) for r in rows) for c in range(len(rows[0]))]
     return ["  " + "  ".join(cell.ljust(w) for cell, w in zip(r, widths)).rstrip() for r in rows]
@@ -36,30 +66,19 @@ def report(sc: Scenario) -> str:
     lines: list[str] = []
     for s, missing in plan.unplaced:
         lines.append(f"Note: {s.id} is not fully placed (missing {missing}) and is left out.")
-    util: dict[str, dict[str, float]] = {r.id: {} for r in sc.rooms}
+    util = utilisation(sc)
 
     for week in cal.cycle_weeks:
         lines += ["", f"=== Week {week}: rooms by day ==="]
         rows = [["room", *cal.days]]
         for room in sc.rooms:
             row = [room.id]
-            busy = 0
             for day in cal.days:
                 occs = [o for o in plan.occs_on(week, day) if room.id in o.rooms]
                 cells = [_cell(o) for o in sorted(occs, key=lambda o: o.start)]
                 if day in pins.get(room.id, []):
                     cells.append("(pinned)")
-                    busy += day_minutes
-                else:
-                    cuts = sorted((o.start, o.end) for o in occs)
-                    covered, end = 0, open_m
-                    for a, b in cuts:
-                        a = max(a, end)
-                        covered += max(0, b - a)
-                        end = max(end, b)
-                    busy += covered
                 row.append(", ".join(cells) or "-")
-            util[room.id][week] = 100 * busy / (day_minutes * len(cal.days))
             rows.append(row)
         lines += _table(rows)
 

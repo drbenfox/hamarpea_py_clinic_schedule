@@ -88,6 +88,7 @@ class Session(_Base):
     duration: int | None = None  # minutes, needed when start/end are left open
     allowed_days: list[str] | None = None
     allowed_rooms: list[str] | None = None
+    window: list[str] | None = None  # [earliest start, latest end] for open-time sessions
     focus: list[str] = []
     covers_tasks: list[str] = []
     locked: dict[str, bool] = {}

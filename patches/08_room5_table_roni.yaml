@@ -1,0 +1,18 @@
+name: room5_table_roni
+description: r5 gets a table and Roni may use it (r4, r5, r6 allowed), with a device session in whichever room she leaves free.
+changes:
+  - op: update
+    list: rooms
+    id: r5
+    set: {attributes: [table, treatment_bed, drug_fridge, surgery_capable, device_capable]}
+  - op: update
+    list: sessions
+    id: roni_sun
+    set:
+      locked: {rooms: false}
+      room_needs: [table, treatment_bed]
+      allowed_rooms: [r4, r5, r6]
+      rooms: {count: 2}
+  - op: add
+    list: sessions
+    value: {id: device_sun_roni, lead: null, weeks: weekly, day: sun, start: "10:00", end: "15:00", rooms: {count: 1}, allowed_rooms: [r4, r5, r6], staff: {count: {nurse: 1}}, focus: [devices]}

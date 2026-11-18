@@ -1,0 +1,6 @@
+name: extra_nurse
+description: Adds a 4th nurse to the pool. Combine with another patch to separate staffing limits from room limits.
+changes:
+  - op: add
+    list: people
+    value: {id: n4, role: nurse}

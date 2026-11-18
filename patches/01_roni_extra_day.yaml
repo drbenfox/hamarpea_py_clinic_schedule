@@ -1,0 +1,29 @@
+name: roni_extra_day
+description: Second Roni clinic as an alternating A/B pair. The solver picks the day for each week.
+changes:
+  - op: add
+    list: sessions
+    value:
+      id: roni_extra_a
+      lead: roni
+      weeks: A
+      day: null
+      start: "10:00"
+      end: "15:00"
+      rooms: {primary: [r4, r6]}
+      staff: {named: [ruth], count: {nurse: 2}}
+      needs_access: [drug_fridge]
+      focus: [aesthetics, consults]
+  - op: add
+    list: sessions
+    value:
+      id: roni_extra_b
+      lead: roni
+      weeks: B
+      day: null
+      start: "10:00"
+      end: "15:00"
+      rooms: {primary: [r4, r6]}
+      staff: {named: [ruth], count: {nurse: 2}}
+      needs_access: [drug_fridge]
+      focus: [aesthetics, consults]

@@ -1,0 +1,7 @@
+name: dina_to_second_site
+description: Dina's meetings move to the second site (s1), releasing r3.
+changes:
+  - op: update
+    list: rules
+    id: dina_in_room3
+    set: {room: s1}

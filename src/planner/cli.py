@@ -7,6 +7,7 @@ from .checker import check
 from .loader import load_scenario
 from .report import report
 from .solve import solve
+from .whatif import load_patch, run_whatif
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -18,6 +19,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("scenario")
     p.add_argument("--json", help="write the solved plan to this JSON file")
     p.add_argument("--time", type=float, default=30.0, help="solver time limit in seconds")
+    p = sub.add_parser("whatif", help="apply patch file(s) to a scenario and show what changes")
+    p.add_argument("scenario")
+    p.add_argument("patches", nargs="+", help="patch YAML files, applied in order")
+    p.add_argument("--time", type=float, default=30.0)
     p = sub.add_parser("report", help="room grid, people, idle time and utilisation")
     p.add_argument("scenario")
     args = parser.parse_args(argv)
@@ -26,6 +31,11 @@ def main(argv: list[str] | None = None) -> int:
         result = check(load_scenario(args.scenario))
         print(result.text())
         return 1 if result.errors else 0
+    if args.command == "whatif":
+        text = Path(args.scenario).read_text()
+        output, ok = run_whatif(text, [load_patch(x) for x in args.patches], args.time)
+        print(output)
+        return 0 if ok else 1
     if args.command == "report":
         print(report(load_scenario(args.scenario)))
         return 0

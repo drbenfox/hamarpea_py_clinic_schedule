@@ -1,0 +1,12 @@
+name: curtain_screen
+description: Curtain screen in r5 makes the fridge rule soft. A device session runs in r5 during Roni's clinic; a 4th nurse is added so the fridge rule, not the nurse pool, is the only blocker.
+changes:
+  - op: option
+    name: curtain_room5
+    value: true
+  - op: add
+    list: people
+    value: {id: n4, role: nurse}
+  - op: add
+    list: sessions
+    value: {id: device_sun_r5, lead: null, weeks: weekly, day: sun, start: "10:00", end: "15:00", rooms: {primary: [r5]}, staff: {count: {nurse: 1}}, focus: [devices]}

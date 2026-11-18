@@ -1,0 +1,7 @@
+name: roni_flow
+description: Roni holds r4 and r6 as primary rooms with r5 attached as overflow, so the fridge sits inside her block. Not yet agreed.
+changes:
+  - op: update
+    list: sessions
+    id: roni_sun
+    set: {rooms: {primary: [r4, r6], overflow: [r5]}}

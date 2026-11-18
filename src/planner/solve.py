@@ -154,11 +154,16 @@ class Builder:
         sv = SVars(s, p, k, count, people, free)
         sv.d = {d: m.NewBoolVar("") for d in self.days if not s.allowed_days or d in s.allowed_days}
         m.Add(sum(sv.d.values()) == p)
-        sv.st = {t: m.NewBoolVar("") for t in range(0, self.N - k + 1)}
+        lo, hi = (to_minutes(s.window[0]), to_minutes(s.window[1])) if s.window else (0, 24 * 60)
+        sv.st = {
+            t: m.NewBoolVar("")
+            for t in range(0, self.N - k + 1)
+            if self.open + t * slot >= lo and self.open + (t + k) * slot <= hi
+        }
         m.Add(sum(sv.st.values()) == p)
         for i in range(self.N):
             c = m.NewBoolVar("")
-            m.Add(c == sum(sv.st[t] for t in range(max(0, i - k + 1), min(i, self.N - k) + 1)))
+            m.Add(c == sum(sv.st[t] for t in range(max(0, i - k + 1), min(i, self.N - k) + 1) if t in sv.st))
             sv.cover.append(c)
 
         room_ids = [r.id for r in self.sc.rooms]
@@ -289,6 +294,9 @@ class Builder:
         handler = getattr(self, f"rule_{spec.type}", None)
         if handler is None:
             return
+        relax = getattr(spec, "relaxed_by", None)
+        if spec.strength == "hard" and relax and getattr(self.sc.options, relax, False):
+            spec = spec.model_copy(update={"strength": "soft", "weight": getattr(spec, "relaxed_weight", spec.weight)})
         g = self.lit(f"rule:{spec.id}", f"Rule {spec.id} ({spec.type})") if spec.strength == "hard" else None
         handler(spec, g)
 
@@ -304,12 +312,7 @@ class Builder:
                     self.limit(spec, g, sv.x[spec.room] + sv.d[day], 1)
 
     def rule_shared_access(self, spec, g) -> None:
-        relax = getattr(spec, "relaxed_by", None)
         weight = spec.weight
-        if relax and getattr(self.sc.options, relax, False):
-            g, weight = None, getattr(spec, "relaxed_weight", spec.weight)
-            if (lit := self.lits.get(f"rule:{spec.id}")) is not None:
-                self.m.Add(lit == 0)
         fridge = self.plan.rooms_with(spec.attribute)
         for sv in self.sv:
             if spec.attribute not in (sv.s.needs_access or []):
@@ -318,6 +321,7 @@ class Builder:
                 if not sv.in_week(w):
                     continue
                 for day in sv.d:
+                    slack = None
                     for i in range(self.N):
                         opts, satisfied = [], False
                         for r in fridge:
@@ -334,7 +338,8 @@ class Builder:
                         if g is not None:
                             self.on(self.m.AddBoolOr(lits), g)
                         else:
-                            self.m.AddBoolOr(lits + [self.pen(weight)])
+                            slack = self.pen(weight) if slack is None else slack
+                            self.m.AddBoolOr(lits + [slack])
 
     def _constant_rule(self, spec, g, bad) -> None:
         if g is None:
@@ -465,13 +470,18 @@ def _explain(b: Builder, solver: cp_model.CpSolver, time_limit: float) -> list[s
     by_index = {v.Index(): k for k, v in b.lits.items()}
     core = [by_index[i] for i in solver.SufficientAssumptionsForInfeasibility() if i in by_index]
     b.m.ClearObjective()
+    proto = b.m.Proto()
 
     def infeasible(keys: list[str]) -> bool:
-        b.m.ClearAssumptions()
-        b.m.AddAssumptions([b.lits[k] for k in keys])
-        s = _solver(time_limit)
-        s.parameters.stop_after_first_solution = True
-        return s.Solve(b.m) == cp_model.INFEASIBLE
+        # fixing the literals in a copy lets presolve work; assumption mode is far slower
+        m = cp_model.CpModel()
+        m.Proto().copy_from(proto)
+        m.Proto().assumptions.clear()
+        for k in keys:
+            domain = m.Proto().variables[b.lits[k].Index()].domain
+            domain.clear()
+            domain.extend([1, 1])
+        return _solver(time_limit).Solve(m) == cp_model.INFEASIBLE
 
     for key in list(core):
         trial = [k for k in core if k != key]

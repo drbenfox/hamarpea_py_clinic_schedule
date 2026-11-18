@@ -1,0 +1,47 @@
+name: suture_removal_session
+description: Suture removal becomes its own session on Liat's clinic days, with its own nurse and room. Length (2h) and window are assumed.
+changes:
+  - op: update
+    list: sessions
+    id: liat_clinic_sun
+    set: {covers_tasks: []}
+  - op: update
+    list: sessions
+    id: liat_clinic_wed
+    set: {covers_tasks: []}
+  - op: update
+    list: tasks
+    id: suture_removal
+    set: {currently: its own sessions}
+  - op: add
+    list: sessions
+    value:
+      id: suture_sun
+      lead: null
+      weeks: weekly
+      day: sun
+      start: null
+      end: null
+      duration: 120
+      window: ["10:00", "18:00"]
+      rooms: {count: 1}
+      allowed_rooms: [r4, r5, r6]
+      staff: {count: {nurse: 1}}
+      covers_tasks: [suture_removal]
+      focus: [aesthetics]
+  - op: add
+    list: sessions
+    value:
+      id: suture_wed
+      lead: null
+      weeks: weekly
+      day: wed
+      start: null
+      end: null
+      duration: 120
+      window: ["10:00", "18:00"]
+      rooms: {count: 1}
+      allowed_rooms: [r4, r5, r6]
+      staff: {count: {nurse: 1}}
+      covers_tasks: [suture_removal]
+      focus: [aesthetics]

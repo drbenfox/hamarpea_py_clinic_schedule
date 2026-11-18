@@ -1,0 +1,10 @@
+name: beatrice_fixed_day
+description: One weekly Beatrice clinic instead of alternating Mon/Wed. The solver picks the day.
+changes:
+  - op: remove
+    list: sessions
+    id: beatrice_wed
+  - op: update
+    list: sessions
+    id: beatrice_mon
+    set: {weeks: weekly, locked: {day: false}}

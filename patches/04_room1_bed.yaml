@@ -1,0 +1,7 @@
+name: room1_bed
+description: Treatment bed back in r1 (Liat's call). Changes nothing by itself; it makes r1 usable for bed sessions.
+changes:
+  - op: update
+    list: rooms
+    id: r1
+    set: {attributes: [table, drug_fridge, treatment_bed]}
