@@ -13,6 +13,7 @@ calendar:
 
 options:
   layout_fixed: true        # fit-out just finished: no building changes, loose furniture only
+  staff_prep_minutes: {nurse: 30}   # a nurse starts half an hour before the doctor
   curtain_room5: false      # true = allow room 5 to be used while others need the fridge (suboptimal)
 
 # ---------------------------------------------------------------- locations

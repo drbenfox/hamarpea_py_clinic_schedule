@@ -1,9 +1,9 @@
 name: more_device_sessions
-description: Device sessions in r4 on Sunday after 15:00, all day Monday, and all day Wednesday.
+description: Device sessions in r4 on Sunday from 15:30 (the nurse arrives at 15:00, when Roni's nurses leave), all day Monday, and all day Wednesday.
 changes:
   - op: add
     list: sessions
-    value: {id: device_sun_pm, lead: null, weeks: weekly, day: sun, start: "15:00", end: "18:00", rooms: {primary: [r4]}, staff: {count: {nurse: 1}}, focus: [devices]}
+    value: {id: device_sun_pm, lead: null, weeks: weekly, day: sun, start: "15:30", end: "18:00", rooms: {primary: [r4]}, staff: {count: {nurse: 1}}, focus: [devices]}
   - op: add
     list: sessions
     value: {id: device_mon, lead: null, weeks: weekly, day: mon, start: "08:00", end: "18:00", rooms: {primary: [r4]}, staff: {count: {nurse: 1}}, focus: [devices]}

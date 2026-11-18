@@ -31,6 +31,7 @@ class Calendar(_Base):
 class Options(_Base):
     layout_fixed: bool = True
     curtain_room5: bool = False
+    staff_prep_minutes: dict[str, int] = {}  # per role: arrives this long before the session starts
 
 
 class Location(_Base):

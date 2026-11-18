@@ -32,9 +32,9 @@ One page: rooms by days with a Week A/B toggle, blocks coloured by lead, a room-
 
 Buttons: Check (re-run rules), Solve, Reset (reload the YAML), File…, PDF.
 
-- **Schedule / Nursing:** the Nursing view draws one vertical bar chart per day (nurses needed by time of day). The dashed line is how many nurses the `roster` gives that day; bars above it turn red.
+- **Nurses row:** the bottom row of the Gantt shows nurses needed over the day (bar height = headcount, nurses arrive `staff_prep_minutes` before a session). The dashed line is how many nurses the `roster` gives that day; bars above it turn red. Click a nurse cell for that day's shifts (who starts and finishes when) and the roster.
 - **File…:** *Save to file* writes the plan back into the YAML, changing only the session lines that moved (comments are kept; it refuses if it cannot do that safely). *Save & commit* also makes a git commit of that file. History lists past versions with *Restore*. Pushing stays in the terminal.
-- **PDF:** opens the browser's print dialog with one landscape page per week (room plan plus nurse charts). Choose "Save as PDF".
+- **PDF:** opens the browser's print dialog with one landscape page per week (the Gantt including the Nurses row). Choose "Save as PDF".
 - Export JSON downloads the current plan. People, rooms, roster and rules are edited in the YAML.
 
 ## Nursing

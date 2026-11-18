@@ -40,11 +40,12 @@ main { flex: 1; display: flex; min-height: 0; }
 .grid { display: grid; grid-template-columns: 96px repeat(5, minmax(120px, 1fr)); gap: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); min-width: 760px; }
 .grid > div { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); }
 .hd { padding: 6px 8px; font-weight: 600; background: var(--bg); position: sticky; top: 0; z-index: 3; }
-.axis { display: flex; justify-content: space-between; font-weight: 400; font-size: 10px; color: var(--muted); }
+.axis { position: relative; height: 12px; font-weight: 400; font-size: 10px; color: var(--muted); }
+.axis span { position: absolute; transform: translateX(-50%); }
 .rl { padding: 8px; font-size: 13px; }
 .rl small { display: block; color: var(--muted); font-size: 11px; }
 .loc { grid-column: 1 / -1; padding: 4px 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); background: var(--bg); }
-.cell { position: relative; height: 40px; background-image: linear-gradient(to right, var(--line) 1px, transparent 1px); background-size: 20% 100%; }
+.cell { position: relative; height: 40px; }
 .blk { position: absolute; top: 3px; bottom: 3px; border-radius: 4px; color: #fff; font-size: 11px; line-height: 1.2; padding: 2px 4px; overflow: hidden; cursor: pointer; border: 2px solid transparent; white-space: nowrap; text-overflow: ellipsis; }
 .blk b { display: block; overflow: hidden; text-overflow: ellipsis; }
 .blk.overflow { background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.25) 0 4px, transparent 4px 8px); }
@@ -71,18 +72,13 @@ details summary { cursor: pointer; font-weight: 600; margin: 8px 0 4px; }
 .muted { color: var(--muted); }
 [hidden] { display: none !important; }
 .nsum { margin: 4px 0 8px; font-weight: 600; } .nsum.bad { color: var(--err); }
-.charts { display: grid; grid-template-columns: repeat(5, minmax(130px, 1fr)); gap: 10px; margin-bottom: 14px; }
-.dc { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
-.dc h4 { margin: 0 0 6px; font-size: 13px; display: flex; justify-content: space-between; }
-.chart { position: relative; height: 120px; border-bottom: 2px solid var(--ink); margin-left: 14px; }
-.gl { position: absolute; left: 0; right: 0; border-top: 1px solid var(--line); }
-.gl span { position: absolute; left: -14px; top: -8px; font-size: 10px; color: var(--muted); }
+.vl { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--line); }
+.ncell { height: 64px; cursor: pointer; }
+.ncell.sel { outline: 2px solid var(--ink); outline-offset: -2px; }
 .bar { position: absolute; bottom: 0; background: var(--soft); color: #fff; font-size: 11px; font-weight: 600; text-align: center; border-right: 1px solid var(--panel); overflow: hidden; }
 .bar.short { background: var(--err); }
 .cap { position: absolute; left: 0; right: 0; border-top: 2px dashed var(--ok); }
-.axisx { display: flex; justify-content: space-between; margin-left: 14px; font-size: 10px; color: var(--muted); }
-.dc .who { font-size: 12px; margin-top: 6px; } .dc .who.bad { color: var(--err); font-weight: 600; }
-.dc .ses { font-size: 11px; color: var(--muted); }
+.nsum { margin: 4px 0 8px; font-weight: 600; } .bad { color: var(--err); font-weight: 600; }
 h3 { font-size: 15px; margin: 14px 0 4px; }
 dialog { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); width: 560px; max-width: 94vw; padding: 16px; }
 dialog::backdrop { background: rgba(0,0,0,.4); }
@@ -110,7 +106,6 @@ dialog h3 { margin-top: 0; } dialog .row { display: flex; gap: 8px; margin: 8px 
 <header>
   <h1>Clinic planner</h1>
   <div class="seg" role="group" aria-label="Week"><button id="wA" data-w="A">Week A</button><button id="wB" data-w="B">Week B</button></div>
-  <div class="seg" role="group" aria-label="View"><button id="vS" class="on">Schedule</button><button id="vN">Nursing</button></div>
   <button id="check">Check</button>
   <button id="solve" class="primary">Solve</button>
   <button id="reset">Reset</button>
@@ -127,7 +122,6 @@ dialog h3 { margin-top: 0; } dialog .row { display: flex; gap: 8px; margin: 8px 
   <div id="left">
     <div id="banner" hidden></div>
     <div id="unplaced"></div>
-    <div id="nursing" hidden></div>
     <div id="grid" class="grid"></div>
     <div id="legend" class="legend"></div>
   </div>
@@ -153,7 +147,7 @@ dialog h3 { margin-top: 0; } dialog .row { display: flex; gap: 8px; margin: 8px 
 "use strict";
 const PALETTE = ["#1f5fa8", "#b8470b", "#0b7a5a", "#7a4a9e", "#00798c", "#8a5a00"];
 const NO_LEAD = "#5b6470";
-let S = null, week = "A", view = "S", selected = null, busy = false;
+let S = null, week = "A", selected = null, selectedNurse = null, busy = false;
 
 const $ = (id) => document.getElementById(id);
 function el(tag, props = {}, ...kids) {
@@ -200,10 +194,6 @@ function render() {
   $("edited").hidden = !S.edited;
   const errs = S.violations.filter((v) => v.severity === "error").length;
   $("status").textContent = errs ? `${errs} hard violation${errs > 1 ? "s" : ""}` : "no hard violations";
-  $("vS").classList.toggle("on", view === "S");
-  $("vN").classList.toggle("on", view === "N");
-  $("unplaced").hidden = $("legend").hidden = $("nursing").hidden = true;
-  if (view === "S") { $("unplaced").hidden = $("legend").hidden = false; } else { $("nursing").hidden = false; renderNursing(); }
   renderBanner(); renderUnplaced(); renderGrid(); renderLegend(); renderDetail(); renderViolations();
 }
 
@@ -235,12 +225,15 @@ const inWk = (s, wk) => s.weeks === "weekly" || s.weeks === wk;
 
 function buildGrid(wk, interactive) {
   const { days, open, close } = S.calendar;
-  const o = mins(open), span = mins(close) - o;
-  const g = el("div", { class: "grid" });
+  const starts = S.nursing.weeks.flatMap((w) => w.days.flatMap((d) => d.segments.map((x) => mins(x.start))));
+  const o = Math.floor(Math.min(mins(open), ...starts) / 60) * 60, span = mins(close) - o;
   const ticks = [];
-  for (let h = Math.ceil(o / 60 / 2) * 2; h * 60 <= mins(close); h += 2) ticks.push(h);
+  for (let h = Math.ceil(o / 120) * 2; h * 60 <= mins(close); h += 2) ticks.push(h);
+  const pos = (h) => `${(100 * (h * 60 - o)) / span}%`;
+  const vlines = (cell) => ticks.forEach((h) => cell.append(el("div", { class: "vl", style: { left: pos(h) } })));
+  const g = el("div", { class: "grid" });
   g.append(el("div", { class: "hd" }, "Room"));
-  for (const d of days) g.append(el("div", { class: "hd" }, d.toUpperCase(), el("div", { class: "axis" }, ...ticks.map((h) => el("span", {}, String(h))))));
+  for (const d of days) g.append(el("div", { class: "hd" }, d.toUpperCase(), el("div", { class: "axis" }, ...ticks.map((h) => el("span", { style: { left: pos(h) } }, String(h))))));
   const bad = interactive ? badIds() : new Set(), moved = interactive ? new Set(S.changed) : new Set();
   const showSecond = interactive && $("second").checked;
   let lastLoc = null;
@@ -251,6 +244,7 @@ function buildGrid(wk, interactive) {
     g.append(el("div", { class: "rl" }, room.id, el("small", {}, room.attributes.join(", "))));
     for (const d of days) {
       const cell = el("div", { class: "cell" });
+      vlines(cell);
       for (const p of S.pins) if (p.room === room.id && p.days.includes(d)) cell.append(el("div", { class: "blk pin", style: { left: "0", width: "100%" }, title: `${p.who} is pinned here` }, el("b", {}, p.who + " (pinned)")));
       for (const s of S.sessions) {
         if (!s.placed || s.day !== d || !inWk(s, wk)) continue;
@@ -265,62 +259,38 @@ function buildGrid(wk, interactive) {
       g.append(cell);
     }
   }
+  nurseRow(g, wk, interactive, o, span, vlines);
   return g;
 }
 
+function nurseRow(g, wk, interactive, o, span, vlines) {
+  const data = S.nursing, w = data.weeks.find((x) => x.week === wk);
+  const maxY = Math.max(3, ...w.days.map((d) => d.peak));
+  g.append(el("div", { class: "loc" }, "Staff"));
+  g.append(el("div", { class: "rl" }, "Nurses", el("small", {}, w.roster ? `${w.need_shifts} shifts, roster ${w.roster.capacity}` : `pool of ${data.pool}`)));
+  for (const d of w.days) {
+    const assigned = w.roster ? (w.roster.assignment[d.day] || []).length : null;
+    const cell = el("div", { class: "cell ncell" + (interactive && selectedNurse === d.day ? " sel" : "") });
+    vlines(cell);
+    for (const x of d.segments) {
+      cell.append(el("div", {
+        class: "bar" + (assigned !== null && x.need > assigned ? " short" : ""),
+        style: { left: `${(100 * (mins(x.start) - o)) / span}%`, width: `${(100 * (mins(x.end) - mins(x.start))) / span}%`, height: `${(100 * x.need) / maxY}%` },
+        title: `${x.start}-${x.end}: ${x.need} nurse${x.need > 1 ? "s" : ""}\n${x.sessions.join(", ")}`,
+      }, String(x.need)));
+    }
+    if (assigned) cell.append(el("div", { class: "cap", style: { bottom: `${(100 * assigned) / maxY}%` } }));
+    if (interactive) Object.assign(cell, { onclick: () => selectNurse(d.day), tabIndex: 0 });
+    g.append(cell);
+  }
+}
+
+function selectNurse(day) { selectedNurse = day; selected = null; render(); }
+
 function renderGrid() {
   const g = buildGrid(week, true);
-  g.id = "grid"; g.hidden = view === "N";
+  g.id = "grid";
   $("grid").replaceWith(g);
-}
-
-// ---- nursing view: one vertical bar chart per day
-function dayChart(d, r, data) {
-  const { open, close } = S.calendar;
-  const o = mins(open), span = mins(close) - o;
-  const assigned = r ? (r.assignment[d.day] || []).length : null;
-  const maxY = Math.max(3, d.peak, assigned || 0);
-  const chart = el("div", { class: "chart" });
-  for (let i = 1; i <= maxY; i++) chart.append(el("div", { class: "gl", style: { bottom: `${(100 * i) / maxY}%` } }, el("span", {}, String(i))));
-  for (const g of d.segments) {
-    const isShort = assigned !== null && g.need > assigned;
-    chart.append(el("div", {
-      class: "bar" + (isShort ? " short" : ""),
-      style: { left: `${(100 * (mins(g.start) - o)) / span}%`, width: `${(100 * (mins(g.end) - mins(g.start))) / span}%`, height: `${(100 * g.need) / maxY}%` },
-      title: `${g.start}-${g.end}: ${g.need} needed\n${g.sessions.join(", ")}`,
-    }, String(g.need)));
-  }
-  if (assigned) chart.append(el("div", { class: "cap", style: { bottom: `${(100 * assigned) / maxY}%` }, title: `${assigned} rostered` }));
-  const gap = r && r.shortfall[d.day];
-  const who = r ? ((r.assignment[d.day] || []).join(", ") || "nobody") + (gap ? ` · short ${gap}` : "") : `pool of ${data.pool}`;
-  return el("div", { class: "dc" },
-    el("h4", {}, el("span", {}, d.day.toUpperCase()), el("span", { class: "muted" }, d.peak ? `peak ${d.peak}` : "none")),
-    chart, el("div", { class: "axisx" }, el("span", {}, short(open)), el("span", {}, short(close))),
-    el("div", { class: "who" + (gap ? " bad" : "") }, d.peak ? who : "no nurse needed"),
-    el("div", { class: "ses" }, d.sessions.join(", ")));
-}
-
-function nursingInto(box, data, weeks) {
-  box.replaceChildren();
-  for (const wk of data.weeks.filter((w) => weeks.includes(w.week))) {
-    const r = wk.roster;
-    const gap = r && r.short_total;
-    box.append(el("h3", {}, `Nurses needed, week ${wk.week}`),
-      el("div", { class: "nsum" + (gap ? " bad" : "") },
-        `${wk.need_shifts} nurse-shifts (${wk.nurse_hours} nurse-hours)`,
-        r ? ` · roster can give ${r.capacity}` + (gap ? ` · short by ${gap}` : " · covered") : ""),
-      el("div", { class: "charts" }, ...wk.days.map((d) => dayChart(d, r, data))));
-  }
-  box.append(el("div", { class: "legend" },
-    el("span", {}, el("i", { style: { background: "var(--soft)" } }), "nurses needed (by time of day)"),
-    el("span", {}, el("i", { style: { background: "var(--err)" } }), "more than rostered"),
-    el("span", {}, el("i", { style: { background: "var(--ok)" } }), "dashed line = nurses rostered that day"),
-    data.people.length ? el("span", {}, "roster: " + data.people.map((p) => `${p.name} ${p.max_shifts ?? "any"}${p.days ? " (" + p.days.join("/") + ")" : ""}`).join(", ")) : null));
-}
-
-async function renderNursing() {
-  const data = await (await fetch("/api/nursing")).json();
-  if (view === "N") nursingInto($("nursing"), data, [week]);
 }
 
 function renderLegend() {
@@ -328,17 +298,32 @@ function renderLegend() {
   $("legend").replaceChildren(
     ...leads.map((l) => el("span", {}, el("i", { style: { background: colourFor(l) } }), l)),
     el("span", {}, el("i", { style: { background: NO_LEAD } }), "no lead"),
-    el("span", {}, "hatched = overflow room · orange dashed = moved by solver · red = hard violation"));
+    el("span", {}, "hatched = overflow room · orange dashed = moved by solver · red outline = hard violation"),
+    el("span", {}, "Nurses row: bar height = nurses needed (arrive 30 min early), dashed green = rostered, red = short"));
 }
 
 function select(id) {
-  selected = id;
+  selected = id; selectedNurse = null;
   const s = S.sessions.find((x) => x.id === id);
   if (s && (s.weeks === "A" || s.weeks === "B")) week = s.weeks;
   render();
 }
 
+function renderNurseDetail() {
+  const d = $("detail"), w = S.nursing.weeks.find((x) => x.week === week), day = w.days.find((x) => x.day === selectedNurse);
+  const r = w.roster, names = r ? r.assignment[day.day] || [] : [], gap = r && r.shortfall[day.day];
+  d.className = "";
+  const dl = el("dl", {});
+  const rows = [["Day", `${day.day} · week ${week}`], ["Peak", day.peak ? `${day.peak} nurse${day.peak > 1 ? "s" : ""}` : "none needed"],
+    ["Rostered", r ? (names.join(", ") || "nobody") + (gap ? ` · short ${gap}` : "") : `pool of ${S.nursing.pool}`], ["Sessions", day.sessions.join(", ") || "none"]];
+  for (const [k, v] of rows) dl.append(el("dt", {}, k), el("dd", { class: k === "Rostered" && gap ? "bad" : "" }, v));
+  d.replaceChildren(dl, el("h2", {}, "Shifts (nurse arrives 30 min before)"),
+    ...(day.shifts.length ? day.shifts.map((x) => el("div", {}, `Nurse ${x.nurse}: ${x.start}-${x.end} (${x.hours} h)`)) : [el("div", { class: "muted" }, "No nurse needed.")]),
+    el("div", { class: "muted", style: { marginTop: "8px" } }, `Week total: ${w.need_shifts} nurse-shifts, ${w.nurse_hours} nurse-hours` + (r ? `; roster gives ${r.capacity}${r.short_total ? `, short ${r.short_total}` : ""}.` : ".")));
+}
+
 function renderDetail() {
+  if (selectedNurse) return renderNurseDetail();
   const d = $("detail"), s = S.sessions.find((x) => x.id === selected);
   if (!s) { d.className = "muted"; d.textContent = "Click a session in the grid."; return; }
   d.className = "";
@@ -379,13 +364,11 @@ function renderViolations() {
   if (!box.children.length) box.append(el("div", { class: "muted" }, "Nothing to report."));
 }
 
-$("vS").onclick = () => { view = "S"; render(); };
-$("vN").onclick = () => { view = "N"; render(); };
 $("wA").onclick = () => { week = "A"; render(); };
 $("wB").onclick = () => { week = "B"; render(); };
 $("check").onclick = () => api("/api/check");
 $("solve").onclick = () => api("/api/solve");
-$("reset").onclick = () => { selected = null; api("/api/reset"); };
+$("reset").onclick = () => { selected = null; selectedNurse = null; api("/api/reset"); };
 $("second").onchange = () => S && renderGrid();
 $("bulk").onchange = (e) => { const v = e.target.value; e.target.value = ""; if (v) api("/api/lock", "POST", { locked: v === "lock" }); };
 
@@ -414,16 +397,12 @@ $("fsave").onclick = () => fileAction("/api/save");
 $("fcommit").onclick = () => fileAction("/api/commit", { message: $("fmsg").value });
 
 $("pdf").onclick = async () => {
-  const data = await (await fetch("/api/nursing")).json();
   const box = $("print");
   box.replaceChildren();
   for (const wk of S.calendar.cycle_weeks) {
     const legend = $("legend").cloneNode(true);
     legend.hidden = false; legend.removeAttribute("id");
     const page = el("div", { class: "page" }, el("h3", {}, `Room plan, week ${wk}`), buildGrid(wk, false), legend);
-    const nurses = el("div", {});
-    nursingInto(nurses, data, [wk]);
-    page.append(nurses);
     box.append(page);
   }
   const title = document.title;

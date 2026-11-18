@@ -81,6 +81,7 @@ class Workspace:
             "sessions": [_session_json(s) for s in sc.sessions],
             "pins": pins,
             "violations": violations,
+            "nursing": nursing(sc),
             "changed": sorted(self.changed),
             "notice": self.notice,
             "edited": sc.model_dump(mode="json") != load_text(self.text).model_dump(mode="json"),

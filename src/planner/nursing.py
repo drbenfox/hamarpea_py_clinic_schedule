@@ -16,6 +16,22 @@ def _segments(plan, role: str, week: str, day: str) -> list[dict]:
     return segs
 
 
+def _shifts(segs: list[dict]) -> list[dict]:
+    """Layer k is one nurse; she works wherever the need is at least k."""
+    out = []
+    for k in range(1, max((s["need"] for s in segs), default=0) + 1):
+        cur = None
+        for s in segs:
+            if s["need"] < k:
+                continue
+            if cur and cur[1] == s["start"]:
+                cur[1] = s["end"]
+            else:
+                cur = [s["start"], s["end"]]
+                out.append((k, cur))
+    return [{"nurse": k, "start": to_hhmm(a), "end": to_hhmm(b), "hours": (b - a) / 60} for k, (a, b) in out]
+
+
 def _allowed(e: RosterEntry, all_days: list[str]) -> list[str]:
     return [d for d in all_days if e.days is None or d in e.days]
 
@@ -53,6 +69,7 @@ def nursing(sc: Scenario, role: str = "nurse") -> dict:
                 "peak": max((s["need"] for s in segs), default=0),
                 "hours": sum(s["need"] * (s["end"] - s["start"]) for s in segs) / 60,
                 "sessions": sorted({i for s in segs for i in s["sessions"]}),
+                "shifts": _shifts(segs),
                 "segments": [{**s, "start": to_hhmm(s["start"]), "end": to_hhmm(s["end"])} for s in segs],
             })
         peaks = {r["day"]: r["peak"] for r in rows}
@@ -92,10 +109,12 @@ def nursing_text(data: dict) -> str:
                 lines.append(f"  {d['day']}  none")
                 continue
             segs = "; ".join(f"{s['start']}-{s['end']} x{s['need']}" for s in d["segments"])
+            shifts = ", ".join(f"{s['start']}-{s['end']}" for s in d["shifts"])
             who = ""
             if r:
                 names = ", ".join(r["assignment"].get(d["day"], [])) or "nobody"
                 gap = r["shortfall"].get(d["day"])
                 who = f"  -> {names}" + (f"  SHORT {gap}" if gap else "")
             lines.append(f"  {d['day']}  peak {d['peak']}  {segs}  ({', '.join(d['sessions'])}){who}")
+            lines.append(f"       shifts: {shifts}")
     return "\n".join(lines).lstrip("\n")

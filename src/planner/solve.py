@@ -63,6 +63,7 @@ class Builder:
         self._and: dict = {}
         self._occ_cache: dict = {}
         self._busy_cache: dict = {}
+        self._pcover: dict = {}
 
     # ------------------------------------------------------------ helpers
     def lit(self, key: str, text: str):
@@ -102,6 +103,19 @@ class Builder:
         if (day, i) not in sv.act:
             sv.act[(day, i)] = self.and_(sv.d[day], sv.cover[i])
         return sv.act[(day, i)]
+
+    def prep_active(self, sv: SVars, day: str, i: int, p: int):
+        """Active in slot i, or starting within the next p slots (staff arrive early)."""
+        if p == 0:
+            return self.active(sv, day, i)
+        if day not in sv.d:
+            return None
+        key = (sv.s.id, i, p)
+        if key not in self._pcover:
+            c = self.m.NewBoolVar("")
+            self.m.Add(c == sum(sv.st[t] for t in range(max(0, i - sv.k + 1), min(i + p, self.N - sv.k) + 1) if t in sv.st))
+            self._pcover[key] = c
+        return self.and_(sv.d[day], self._pcover[key])
 
     def occ(self, sv: SVars, r: str, day: str, i: int):
         key = (sv.s.id, r, day, i)
@@ -274,6 +288,7 @@ class Builder:
         for role in roles:
             pool = sum(1 for p in sc.people if p.role == role)
             named = {p.id for p in sc.people if p.role == role}
+            prep_slots = -(-sc.options.staff_prep_minutes.get(role, 0) // self.slot)
             for w in self.weeks:
                 for day in self.days:
                     peak = m.NewIntVar(0, 100, "")
@@ -281,7 +296,7 @@ class Builder:
                         terms = []
                         for sv in self.sv:
                             c = sv.s.staff.count.get(role, 0) + len(set(sv.people) & named)
-                            a = self.active(sv, day, i) if sv.in_week(w) else None
+                            a = self.prep_active(sv, day, i, prep_slots) if sv.in_week(w) else None
                             if c and a is not None:
                                 terms.append(c * a)
                         if terms:

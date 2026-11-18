@@ -86,3 +86,22 @@ def test_nursing_numbers_for_seed():
     assert [d["peak"] for d in b["days"]] == [3, 0, 2, 2, 2]
     assert a["roster"]["capacity"] == 7 and a["roster"]["short_total"] == 2
     assert a["roster"]["assignment"]["tue"] and "batzi" not in sum((v for k, v in a["roster"]["assignment"].items() if k != "tue"), [])
+
+
+def test_nurses_arrive_before_the_doctor_and_leave_when_the_session_ends():
+    sun = nursing(load_text(SEED.read_text()))["weeks"][0]["days"][0]
+    assert [(s["start"], s["end"], s["need"]) for s in sun["segments"]] == [("09:30", "15:00", 3), ("15:00", "18:00", 1)]
+    assert [(s["start"], s["end"]) for s in sun["shifts"]] == [("09:30", "18:00"), ("09:30", "15:00"), ("09:30", "15:00")]
+
+
+def test_prep_time_blocks_a_nurse_who_would_otherwise_be_free():
+    from planner.solve import solve
+    from test_check import BASE, session
+    base = BASE.replace("calendar:", "options: {staff_prep_minutes: {nurse: 30}}\ncalendar:", 1).replace("  - {id: n2, role: nurse}\n", "")
+    first = session("a", ["r1"], start="09:00", end="12:00", extra="staff: {count: {nurse: 1}}")
+    # the second nurse session starts right as the first ends: its nurse arrives 11:30 and overlaps
+    second = session("b", ["r2"], lead="doc2", start="12:00", end="14:00", extra="staff: {count: {nurse: 1}}")
+    r = solve(load_text(base + "sessions:" + first + second))
+    assert r.status == "infeasible" and any("Staff headcount" in c for c in r.core)
+    r = solve(load_text(base.replace("options: {staff_prep_minutes: {nurse: 30}}\n", "") + "sessions:" + first + second))
+    assert r.status == "solved"

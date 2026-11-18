@@ -148,15 +148,19 @@ class RoomNeeds(Builtin):
 
 def _role_demand(plan: Plan, role: str, week: str, day: str) -> list[tuple[int, int, int, list[str]]]:
     """(start, end, headcount, session ids) for each stretch of the day."""
-    occs = plan.occs_on(week, day)
-    cuts = sorted({t for o in occs for t in (o.start, o.end)})
+    prep = plan.scenario.options.staff_prep_minutes.get(role, 0)
     named = {p.id for p in plan.scenario.people if p.role == role}
+    wins = []
+    for o in plan.occs_on(week, day):
+        n = o.session.staff.count.get(role, 0) + len(set(o.people) & named)
+        if n:
+            wins.append((o.start - prep, o.end, n, o.session.id))
+    cuts = sorted({t for a, b, _, _ in wins for t in (a, b)})
     rows = []
     for a, b in zip(cuts, cuts[1:]):
-        active = [o for o in occs if o.start < b and a < o.end]
-        n = sum(o.session.staff.count.get(role, 0) + len(set(o.people) & named) for o in active)
-        if n:
-            rows.append((a, b, n, [o.session.id for o in active if o.session.staff.count.get(role, 0) or set(o.people) & named]))
+        active = [w for w in wins if w[0] < b and a < w[1]]
+        if active:
+            rows.append((a, b, sum(w[2] for w in active), [w[3] for w in active]))
     return rows
 
 

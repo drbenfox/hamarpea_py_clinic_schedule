@@ -44,3 +44,10 @@ def test_bulk_unlock_and_lock():
     assert all(not any(s["locks"].values()) for s in ws.state()["sessions"])
     ws.set_lock(None, None, True)
     assert all(all(s["locks"].values()) for s in ws.state()["sessions"])
+
+
+def test_state_carries_the_nurse_row():
+    nursing = Workspace(SEED).state()["nursing"]
+    sun = nursing["weeks"][0]["days"][0]
+    assert sun["peak"] == 3 and sun["shifts"][0]["start"] == "09:30"
+    assert nursing["weeks"][0]["roster"]["short_total"] == 2
